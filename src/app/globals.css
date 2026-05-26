@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: #F9FAFB;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn-primary {
+  background: #00C853;
+  color: white;
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  text-decoration: none;
+}
+.btn-primary:hover { background: #00A846; }
+.btn-primary:disabled { background: #9CA3AF; cursor: not-allowed; }
+
+.btn-secondary {
+  background: white;
+  color: #374151;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid #E5E7EB;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  text-decoration: none;
+}
+.btn-secondary:hover { background: #F9FAFB; }
+
+.btn-danger {
+  background: #FEF2F2;
+  color: #DC2626;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid #FECACA;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.btn-danger:hover { background: #FEE2E2; }
+
+.card {
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px solid #E5E7EB;
+  padding: 1.5rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #111827;
+  background: white;
+  transition: border-color 0.15s;
+  outline: none;
+}
+.input:focus { border-color: #00C853; box-shadow: 0 0 0 3px rgba(0,200,83,0.1); }
+
+.label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.375rem;
+}
+
+.badge { display: inline-flex; align-items: center; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+.badge-green { background: #DCFCE7; color: #16A34A; }
+.badge-blue { background: #DBEAFE; color: #2563EB; }
+.badge-yellow { background: #FEF9C3; color: #A16207; }
+.badge-red { background: #FEE2E2; color: #DC2626; }
+.badge-gray { background: #F3F4F6; color: #6B7280; }
+.badge-purple { background: #F3E8FF; color: #7C3AED; }
+
+.table-row-hover { cursor: pointer; transition: background 0.1s; }
+.table-row-hover:hover { background: #FAFAFA; }
