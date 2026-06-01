@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import Link from 'next/link'
@@ -28,7 +30,6 @@ export default async function CallsPage({
     query = query.gte('created_at', params.from)
   }
   if (params.to) {
-    // Add 1 day so "to" date is inclusive
     const toDate = new Date(params.to)
     toDate.setDate(toDate.getDate() + 1)
     query = query.lt('created_at', toDate.toISOString())
@@ -47,7 +48,6 @@ export default async function CallsPage({
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0D1117' }}>Call History</h1>
@@ -63,10 +63,8 @@ export default async function CallsPage({
         </Link>
       </div>
 
-      {/* Search + Filters */}
       <CallsSearchFilter currentParams={params} statusCounts={statusCounts} />
 
-      {/* Table */}
       {!calls || calls.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
@@ -94,11 +92,7 @@ export default async function CallsPage({
             </thead>
             <tbody>
               {calls.map((call) => (
-                <tr
-                  key={call.id}
-                  className="table-row-hover"
-                  style={{ borderBottom: '1px solid #F3F4F6' }}
-                >
+                <tr key={call.id} className="table-row-hover" style={{ borderBottom: '1px solid #F3F4F6' }}>
                   <td style={{ padding: '0.875rem 1rem' }}>
                     <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <div style={{ fontWeight: 600, color: '#0D1117', fontSize: '0.875rem' }}>{call.patient_name}</div>
