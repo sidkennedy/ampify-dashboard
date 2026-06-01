@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation'
 export default function AdminActions() {
   const router = useRouter()
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', npi: '', tax_id: '', address: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', npi: '', tax_id: '', address: '' })
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
   async function createClinic() {
-    if (!form.name.trim() || !form.email.trim()) return
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) return
     setSaving(true)
     setMsg('')
     const res = await fetch('/api/admin/clinics', {
@@ -24,10 +24,10 @@ export default function AdminActions() {
     if (!res.ok) {
       setMsg(`Error: ${data.error}`)
     } else {
-      setMsg('Clinic created! An invite has been sent to the admin email.')
-      setForm({ name: '', email: '', npi: '', tax_id: '', address: '' })
+      setMsg('Clinic created! Send them their email and password directly.')
+      setForm({ name: '', email: '', password: '', npi: '', tax_id: '', address: '' })
       router.refresh()
-      setTimeout(() => { setShowCreate(false); setMsg('') }, 3000)
+      setTimeout(() => { setShowCreate(false); setMsg('') }, 4000)
     }
   }
 
@@ -46,17 +46,32 @@ export default function AdminActions() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
         }} onClick={e => { if (e.target === e.currentTarget) setShowCreate(false) }}>
           <div style={{ background: 'white', borderRadius: '1rem', padding: '2rem', width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0D1117', marginBottom: '1.5rem' }}>Create New Clinic</h3>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0D1117', marginBottom: '0.375rem' }}>Create New Clinic</h3>
+            <p style={{ color: '#6B7280', fontSize: '0.8125rem', marginBottom: '1.5rem' }}>
+              You'll send them their login details directly — no invite email.
+            </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label className="label">Clinic Name *</label>
                 <input className="input" placeholder="Hearing Care Clinic" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
-              <div>
-                <label className="label">Admin Email * <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(will receive invite)</span></label>
-                <input className="input" type="email" placeholder="admin@clinic.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label className="label">Admin Email *</label>
+                  <input className="input" type="email" placeholder="admin@clinic.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Password *</label>
+                  <input className="input" type="text" placeholder="Set their password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+                </div>
               </div>
+
+              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '0.5rem', padding: '0.75rem', fontSize: '0.8125rem', color: '#15803D' }}>
+                💡 After creating, just text or email them: <em>their email + this password</em>. They can change it in Settings later.
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
                   <label className="label">Provider NPI</label>
@@ -67,6 +82,7 @@ export default function AdminActions() {
                   <input className="input" placeholder="XX-XXXXXXX" value={form.tax_id} onChange={e => setForm(f => ({ ...f, tax_id: e.target.value }))} />
                 </div>
               </div>
+
               <div>
                 <label className="label">Clinic Address</label>
                 <input className="input" placeholder="123 Main St, City, ST 12345" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
@@ -79,8 +95,12 @@ export default function AdminActions() {
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
               <button className="btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
-              <button className="btn-primary" onClick={createClinic} disabled={saving || !form.name.trim() || !form.email.trim()}>
-                {saving ? 'Creating…' : 'Create Clinic & Send Invite'}
+              <button
+                className="btn-primary"
+                onClick={createClinic}
+                disabled={saving || !form.name.trim() || !form.email.trim() || !form.password.trim()}
+              >
+                {saving ? 'Creating…' : 'Create Clinic'}
               </button>
             </div>
           </div>

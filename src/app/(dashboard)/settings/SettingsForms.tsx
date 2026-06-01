@@ -101,28 +101,30 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
     if (!error) setTemplates(t => t.filter(x => x.id !== id))
   }
 
-  // ── Invite ────────────────────────────────────────────────────────────────
+  // ── Add staff ────────────────────────────────────────────────────────────
   const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePassword, setInvitePassword] = useState('')
   const [inviteRole, setInviteRole] = useState<'staff' | 'admin'>('staff')
   const [inviteSending, setInviteSending] = useState(false)
   const [inviteMsg, setInviteMsg] = useState('')
 
   async function sendInvite() {
-    if (!inviteEmail.trim()) return
+    if (!inviteEmail.trim() || !invitePassword.trim()) return
     setInviteSending(true)
     setInviteMsg('')
     const res = await fetch('/api/invites', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+      body: JSON.stringify({ email: inviteEmail.trim(), password: invitePassword.trim(), role: inviteRole }),
     })
     const data = await res.json()
     setInviteSending(false)
     if (!res.ok) {
       setInviteMsg(`Error: ${data.error}`)
     } else {
-      setInviteMsg('Invite sent! They\'ll receive an email to set up their account.')
+      setInviteMsg('Account created! Send them their email and password directly.')
       setInviteEmail('')
+      setInvitePassword('')
     }
     setTimeout(() => setInviteMsg(''), 6000)
   }
@@ -245,7 +247,7 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
 
       {/* ── Team ── */}
       <div className="card">
-        <SectionHeader title="Team Members" description="Invite staff to your clinic account. They'll get an email to set their password." />
+        <SectionHeader title="Team Members" description="Add staff to your clinic account. Send them their login details directly." />
 
         {/* Staff list */}
         {staff.length > 0 && (
@@ -279,10 +281,10 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
           </div>
         )}
 
-        {/* Invite form */}
+        {/* Add staff form */}
         <div>
-          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem' }}>Invite a new team member</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '0.75rem', alignItems: 'flex-end' }}>
+          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.875rem' }}>Add a new team member</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '0.75rem', alignItems: 'flex-end' }}>
             <div>
               <label className="label">Email Address</label>
               <input
@@ -291,7 +293,16 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
                 placeholder="colleague@clinic.com"
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendInvite()}
+              />
+            </div>
+            <div>
+              <label className="label">Password</label>
+              <input
+                className="input"
+                type="text"
+                placeholder="Set their password"
+                value={invitePassword}
+                onChange={e => setInvitePassword(e.target.value)}
               />
             </div>
             <div>
@@ -308,9 +319,9 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
             <button
               className="btn-primary"
               onClick={sendInvite}
-              disabled={inviteSending || !inviteEmail.trim()}
+              disabled={inviteSending || !inviteEmail.trim() || !invitePassword.trim()}
             >
-              {inviteSending ? 'Sending…' : 'Send Invite'}
+              {inviteSending ? 'Creating…' : 'Add'}
             </button>
           </div>
           {inviteMsg && (

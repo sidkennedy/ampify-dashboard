@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { name, email, npi, tax_id, address } = await req.json()
-    if (!name?.trim() || !email?.trim()) {
-      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
+    const { name, email, password, npi, tax_id, address } = await req.json()
+    if (!name?.trim() || !email?.trim() || !password?.trim()) {
+      return NextResponse.json({ error: 'Name, email and password are required' }, { status: 400 })
     }
 
     const serviceClient = await createServiceClient()
@@ -34,27 +34,25 @@ export async function POST(req: NextRequest) {
 
     if (clinicErr) throw new Error(clinicErr.message)
 
-    // Invite admin user (Supabase sends magic link email)
-    const { data: inviteData, error: inviteErr } = await serviceClient.auth.admin.inviteUserByEmail(email.trim(), {
-      data: {
-        clinic_id: clinic.id,
-        role: 'admin',
-      },
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+    // Create user with a set password — no invite email sent
+    const { data: userData, error: userErr } = await serviceClient.auth.admin.createUser({
+      email: email.trim(),
+      password: password.trim(),
+      email_confirm: true, // skip email confirmation step
     })
 
-    if (inviteErr) {
-      // Clean up clinic if invite fails
+    if (userErr) {
+      // Clean up clinic if user creation fails
       await serviceClient.from('clinics').delete().eq('id', clinic.id)
-      throw new Error(inviteErr.message)
+      throw new Error(userErr.message)
     }
 
-    // Pre-create admin profile
-    if (inviteData?.user) {
+    // Create admin profile
+    if (userData?.user) {
       await serviceClient
         .from('profiles')
         .upsert({
-          id: inviteData.user.id,
+          id: userData.user.id,
           clinic_id: clinic.id,
           role: 'admin',
           email: email.trim(),
