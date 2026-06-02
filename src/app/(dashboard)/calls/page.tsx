@@ -5,6 +5,29 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import StatusBadge from '@/components/calls/StatusBadge'
 import CallsSearchFilter from './CallsSearchFilter'
+import { VERIFICATION_TEMPLATES, VerificationType } from '@/lib/verification-templates'
+
+function TypeBadge({ type }: { type: string | null }) {
+  if (!type || !(type in VERIFICATION_TEMPLATES)) {
+    return <span style={{ color: '#9CA3AF', fontSize: '0.8125rem' }}>—</span>
+  }
+  const t = VERIFICATION_TEMPLATES[type as VerificationType]
+  return (
+    <span style={{
+      display: 'inline-block',
+      background: t.bgColor,
+      color: t.textColor,
+      border: `1px solid ${t.borderColor}`,
+      borderRadius: '0.375rem',
+      padding: '0.125rem 0.5rem',
+      fontSize: '0.75rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+    }}>
+      {t.shortLabel}
+    </span>
+  )
+}
 
 export default async function CallsPage({
   searchParams,
@@ -85,7 +108,7 @@ export default async function CallsPage({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                {['Patient', 'Member ID', 'Codes', 'Insurance Phone', 'Status', 'Duration', 'Cost', 'Date'].map(h => (
+                {['Patient', 'Member ID', 'Type', 'Insurance Phone', 'Status', 'Duration', 'Cost', 'Date'].map(h => (
                   <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -102,9 +125,9 @@ export default async function CallsPage({
                   <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem', fontFamily: 'monospace' }}>
                     <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>{call.member_id}</Link>
                   </td>
-                  <td style={{ padding: '0.875rem 1rem', maxWidth: 160 }}>
+                  <td style={{ padding: '0.875rem 1rem' }}>
                     <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <span style={{ color: '#374151', fontSize: '0.8125rem', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{call.codes_requested}</span>
+                      <TypeBadge type={call.verification_type} />
                     </Link>
                   </td>
                   <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem', fontFamily: 'monospace' }}>

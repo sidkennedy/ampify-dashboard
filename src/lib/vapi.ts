@@ -13,6 +13,12 @@ export interface StartCallParams {
   clinicAddress: string
   codesRequested: string
   insurancePhone: string
+  // Template-specific fields
+  verificationType: string
+  dateOfService: string
+  planType: string
+  state: string
+  diagnosisCode: string
 }
 
 export async function startVapiCall(params: StartCallParams): Promise<{ callId: string }> {
@@ -36,6 +42,11 @@ export async function startVapiCall(params: StartCallParams): Promise<{ callId: 
           clinicName: params.clinicName,
           clinicAddress: params.clinicAddress,
           codesRequested: params.codesRequested,
+          verificationType: params.verificationType,
+          dateOfService: params.dateOfService,
+          planType: params.planType,
+          state: params.state,
+          diagnosisCode: params.diagnosisCode,
         },
       },
     }),

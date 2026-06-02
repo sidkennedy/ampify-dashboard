@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Call, EligibilityOutput, CodesOutput } from '@/types'
+import { VERIFICATION_TEMPLATES, VerificationType } from '@/lib/verification-templates'
 
 function YesNo({ val }: { val: boolean | null | undefined }) {
   if (val === null || val === undefined) return <span style={{ color: '#9CA3AF' }}>—</span>
@@ -104,8 +105,54 @@ export default function CallDetailTabs({ call }: { call: Call }) {
     return null
   }
 
+  // Verification type info bar
+  const verificationBar = () => {
+    const vt = call.verification_type
+    if (!vt || !(vt in VERIFICATION_TEMPLATES)) return null
+    const t = VERIFICATION_TEMPLATES[vt as VerificationType]
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
+        background: t.bgColor, border: `1px solid ${t.borderColor}`,
+        borderRadius: '0.75rem', padding: '0.875rem 1.25rem', marginBottom: '1.25rem',
+      }}>
+        <div>
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verification Type</span>
+          <div style={{ fontWeight: 700, color: t.textColor, fontSize: '0.9375rem', marginTop: '0.125rem' }}>{t.label}</div>
+        </div>
+        <div>
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>CPT / HCPCS</span>
+          <div style={{ fontFamily: 'monospace', fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{t.cptCodes}</div>
+        </div>
+        <div>
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Diagnosis</span>
+          <div style={{ fontFamily: 'monospace', fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{t.diagnosisCode}</div>
+        </div>
+        {call.date_of_service && (
+          <div>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date of Service</span>
+            <div style={{ fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{call.date_of_service}</div>
+          </div>
+        )}
+        {call.plan_type && (
+          <div>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Plan Type</span>
+            <div style={{ fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{call.plan_type}</div>
+          </div>
+        )}
+        {call.state && (
+          <div>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>State</span>
+            <div style={{ fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{call.state}</div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
+      {verificationBar()}
       {statusBanner()}
 
       {/* Tab bar */}
@@ -179,11 +226,30 @@ export default function CallDetailTabs({ call }: { call: Call }) {
                   <Row label="Allowance Type">{elig.benefits?.hearingAidBenefit?.allowanceType ?? '—'}</Row>
                   <Row label="Frequency">{elig.benefits?.hearingAidBenefit?.frequency ?? '—'}</Row>
                   <Row label="Prior Auth Required"><YesNo val={elig.benefits?.hearingAidBenefit?.requiresPriorAuth} /></Row>
-                  <Row label="Vendor Restriction">{elig.benefits?.hearingAidBenefit?.vendorRestriction ?? '—'}</Row>
+                  <Row label="Vendor / 3rd Party Restriction">{elig.benefits?.hearingAidBenefit?.vendorRestriction ?? '—'}</Row>
+                  <Row label="Age Restrictions">{elig.benefits?.hearingAidBenefit?.ageRestrictions ?? '—'}</Row>
+                  <Row label="Deductible Applies"><YesNo val={elig.benefits?.hearingAidBenefit?.deductibleApplies} /></Row>
                   {elig.benefits?.hearingAidBenefit?.coverageNotes && (
                     <Row label="Notes">{elig.benefits.hearingAidBenefit.coverageNotes}</Row>
                   )}
                 </Section>
+
+                {/* ABR / APD specific */}
+                {(call.verification_type === 'abr' || call.verification_type === 'apd') && (
+                  <Section title="Medical Policy">
+                    <Row label="Corporate Medical Policies Apply">{elig.plan?.medicalNecessityRequired != null ? <YesNo val={elig.plan.medicalNecessityRequired} /> : <span style={{ color: '#9CA3AF' }}>—</span>}</Row>
+                  </Section>
+                )}
+
+                {/* Audiology-specific exam details */}
+                {elig.benefits?.audiologyExam?.covered !== undefined && (
+                  <Section title="Audiology Exam">
+                    <Row label="Covered"><YesNo val={elig.benefits.audiologyExam.covered} /></Row>
+                    <Row label="Visit Limit">{elig.benefits.audiologyExam.visitLimit ?? '—'}</Row>
+                    <Row label="Frequency Limit">{elig.benefits.audiologyExam.frequencyLimit ?? '—'}</Row>
+                    <Row label="Coverage Details">{elig.benefits.audiologyExam.coverageDetails ?? '—'}</Row>
+                  </Section>
+                )}
               </div>
 
               {elig.notes && (

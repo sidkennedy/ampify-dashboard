@@ -1,5 +1,6 @@
 export type CallStatus = 'queued' | 'scheduled' | 'in_progress' | 'completed' | 'failed'
 export type UserRole = 'staff' | 'admin' | 'superadmin'
+export type VerificationType = 'diagnostic' | 'hearing_aid' | 'abr' | 'apd' | 'vestibular'
 
 export interface Clinic {
   id: string
@@ -41,6 +42,12 @@ export interface Call {
   insurance_phone: string
   codes_requested: string
   phone_number_id: string | null
+  // Verification template fields
+  verification_type: VerificationType | null
+  date_of_service: string | null
+  plan_type: string | null
+  state: string | null
+  diagnosis_code: string | null
   status: CallStatus
   scheduled_for: string | null
   structured_output_eligibility: EligibilityOutput | null

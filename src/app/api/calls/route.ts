@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     const {
       clinicId, patientName, dob, memberId, insurancePhone, codesRequested,
       providerNPI, clinicTaxId, clinicName, clinicAddress,
+      verificationType, dateOfService, planType, state, diagnosisCode,
     } = body
 
     // Check insurance hours
@@ -33,6 +34,12 @@ export async function POST(req: NextRequest) {
         clinic_name: clinicName,
         clinic_address: clinicAddress,
         phone_number_id: process.env.VAPI_PHONE_NUMBER_ID,
+        // New template fields
+        verification_type: verificationType ?? null,
+        date_of_service: dateOfService ?? null,
+        plan_type: planType ?? null,
+        state: state ?? null,
+        diagnosis_code: diagnosisCode ?? null,
         status: schedule ? 'scheduled' : 'queued',
         scheduled_for: schedule && scheduledFor ? scheduledFor.toISOString() : null,
       })
@@ -66,6 +73,11 @@ export async function POST(req: NextRequest) {
       clinicAddress,
       codesRequested,
       insurancePhone,
+      verificationType: verificationType ?? '',
+      dateOfService: dateOfService ?? '',
+      planType: planType ?? '',
+      state: state ?? 'NY',
+      diagnosisCode: diagnosisCode ?? '',
     })
 
     // Update with VAPI call ID
