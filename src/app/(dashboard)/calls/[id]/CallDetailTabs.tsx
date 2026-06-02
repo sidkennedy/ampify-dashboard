@@ -54,22 +54,60 @@ export default function CallDetailTabs({ call }: { call: Call }) {
     transition: 'all 0.15s',
   })
 
-  if (!elig && !codes && call.status !== 'completed' && call.status !== 'failed') {
-    return (
-      <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-          <svg width="24" height="24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14v3z"/>
-          </svg>
+  // Status banner — shown above the tabs for non-completed calls
+  const statusBanner = () => {
+    if (call.status === 'queued') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontWeight: 600, color: '#15803D', marginBottom: '0.25rem' }}>Thank you — data submitted for testing</p>
+            <p style={{ color: '#166534', fontSize: '0.875rem' }}>Patient details have been saved successfully. No further action needed from you.</p>
+          </div>
         </div>
-        <p style={{ fontWeight: 600, color: '#0D1117', marginBottom: '0.5rem' }}>Call in progress</p>
-        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>Results will appear here when the call ends.</p>
-      </div>
-    )
+      )
+    }
+    if (call.status === 'scheduled') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem', background: '#FEFCE8', border: '1px solid #FDE68A', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#FEF9C3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" fill="none" stroke="#CA8A04" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontWeight: 600, color: '#92400E', marginBottom: '0.25rem' }}>Call scheduled</p>
+            <p style={{ color: '#78350F', fontSize: '0.875rem' }}>This call will be placed automatically during insurance business hours. Results will appear here once complete.</p>
+          </div>
+        </div>
+      )
+    }
+    if (call.status === 'in_progress') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14v3z"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontWeight: 600, color: '#1D4ED8', marginBottom: '0.25rem' }}>Call in progress</p>
+            <p style={{ color: '#1E40AF', fontSize: '0.875rem' }}>The AI agent is on the call now. Results will appear here automatically when it ends.</p>
+          </div>
+        </div>
+      )
+    }
+    return null
   }
 
   return (
     <div>
+      {statusBanner()}
+
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: '0.375rem', background: '#F3F4F6', padding: '0.375rem', borderRadius: '0.75rem', marginBottom: '1.5rem', width: 'fit-content' }}>
         <button style={tabStyle('overview')} onClick={() => setTab('overview')}>Overview</button>

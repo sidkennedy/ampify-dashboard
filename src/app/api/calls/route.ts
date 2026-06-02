@@ -50,6 +50,11 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // TRIAL MODE — skip Vapi entirely, just save the record and return
+    if (process.env.TRIAL_MODE === 'true') {
+      return NextResponse.json({ callId: callRecord.id, status: 'queued' })
+    }
+
     // Place call via VAPI
     const { callId: vapiCallId } = await startVapiCall({
       patientName,
