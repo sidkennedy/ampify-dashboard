@@ -19,6 +19,9 @@ export interface StartCallParams {
   planType: string
   state: string
   diagnosisCode: string
+  // Caller identity (per-clinic, for multi-tenant scaling)
+  callerName: string
+  callbackNumber: string
 }
 
 export async function startVapiCall(params: StartCallParams): Promise<{ callId: string }> {
@@ -47,6 +50,8 @@ export async function startVapiCall(params: StartCallParams): Promise<{ callId: 
           planType: params.planType,
           state: params.state,
           diagnosisCode: params.diagnosisCode,
+          callerName: params.callerName,
+          callbackNumber: params.callbackNumber,
         },
       },
     }),

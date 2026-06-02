@@ -8,6 +8,8 @@ export interface Clinic {
   address: string | null
   npi: string | null
   tax_id: string | null
+  caller_name: string | null
+  callback_number: string | null
   status: 'active' | 'inactive'
   created_at: string
 }
@@ -42,6 +44,8 @@ export interface Call {
   insurance_phone: string
   codes_requested: string
   phone_number_id: string | null
+  caller_name: string | null
+  callback_number: string | null
   // Verification template fields
   verification_type: VerificationType | null
   date_of_service: string | null

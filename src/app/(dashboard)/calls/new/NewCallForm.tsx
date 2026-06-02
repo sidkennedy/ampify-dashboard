@@ -10,13 +10,15 @@ interface Props {
   clinicTaxId: string
   clinicName: string
   clinicAddress: string
+  callerName: string
+  callbackNumber: string
 }
 
 const TEMPLATES_ORDER: VerificationType[] = ['diagnostic', 'hearing_aid', 'abr', 'apd', 'vestibular']
 
 const PLAN_TYPES = ['HMO', 'PPO', 'EPO', 'POS', 'Medicare', 'Medicaid', 'Medicare Advantage', 'Other']
 
-export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicName, clinicAddress }: Props) {
+export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicName, clinicAddress, callerName, callbackNumber }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -34,6 +36,8 @@ export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicNa
     clinicTaxId: clinicTaxId,
     clinicName: clinicName,
     clinicAddress: clinicAddress,
+    callerName: callerName,
+    callbackNumber: callbackNumber,
   })
 
   function set(key: string, value: string) {
@@ -215,7 +219,7 @@ export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicNa
           <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9CA3AF', marginLeft: '0.375rem' }}>Pre-filled from settings</span>
         </h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
           <div>
             <label className="label">Provider NPI</label>
             <input className="input" placeholder="1234567890" value={form.providerNPI} onChange={e => set('providerNPI', e.target.value)} />
@@ -231,6 +235,14 @@ export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicNa
           <div>
             <label className="label">Clinic Address</label>
             <input className="input" placeholder="123 Main St, City, ST 12345" value={form.clinicAddress} onChange={e => set('clinicAddress', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Caller Name</label>
+            <input className="input" placeholder="Tammy" value={form.callerName} onChange={e => set('callerName', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Callback Number</label>
+            <input className="input" placeholder="(315) 468-2985" value={form.callbackNumber} onChange={e => set('callbackNumber', e.target.value)} />
           </div>
         </div>
       </div>
