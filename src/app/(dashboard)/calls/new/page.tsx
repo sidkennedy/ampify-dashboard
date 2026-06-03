@@ -7,11 +7,11 @@ export default async function NewCallPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('clinic_id, clinics(npi, tax_id, name, address, caller_name, callback_number)')
+    .select('clinic_id, clinics(npi, tax_id, name, address, callback_number)')
     .eq('id', user!.id)
     .single()
 
-  const clinic = (profile?.clinics as unknown as { npi: string | null; tax_id: string | null; name: string | null; address: string | null; caller_name: string | null; callback_number: string | null } | null)
+  const clinic = (profile?.clinics as unknown as { npi: string | null; tax_id: string | null; name: string | null; address: string | null; callback_number: string | null } | null)
 
   return (
     <div>
@@ -25,7 +25,6 @@ export default async function NewCallPage() {
         clinicTaxId={clinic?.tax_id ?? ''}
         clinicName={clinic?.name ?? ''}
         clinicAddress={clinic?.address ?? ''}
-        callerName={clinic?.caller_name ?? ''}
         callbackNumber={clinic?.callback_number ?? ''}
       />
     </div>

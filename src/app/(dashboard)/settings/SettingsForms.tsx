@@ -32,7 +32,6 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
     npi: clinic?.npi ?? '',
     tax_id: clinic?.tax_id ?? '',
     address: clinic?.address ?? '',
-    caller_name: clinic?.caller_name ?? '',
     callback_number: clinic?.callback_number ?? '',
   })
   const [clinicSaving, setClinicSaving] = useState(false)
@@ -155,14 +154,9 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
             <input className="input" placeholder="XX-XXXXXXX" value={clinicForm.tax_id} onChange={e => setClinicForm(f => ({ ...f, tax_id: e.target.value }))} />
           </div>
           <div>
-            <label className="label">Caller Name</label>
-            <input className="input" placeholder="e.g. Tammy" value={clinicForm.caller_name} onChange={e => setClinicForm(f => ({ ...f, caller_name: e.target.value }))} />
-            <p style={{ color: '#9CA3AF', fontSize: '0.75rem', marginTop: '0.375rem' }}>The name the AI uses when calling insurance.</p>
-          </div>
-          <div>
             <label className="label">Callback Number</label>
             <input className="input" placeholder="e.g. (315) 468-2985" value={clinicForm.callback_number} onChange={e => setClinicForm(f => ({ ...f, callback_number: e.target.value }))} />
-            <p style={{ color: '#9CA3AF', fontSize: '0.75rem', marginTop: '0.375rem' }}>Callback number the AI gives if asked.</p>
+            <p style={{ color: '#9CA3AF', fontSize: '0.75rem', marginTop: '0.375rem' }}>Callback number the AI gives if an insurance rep asks.</p>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.25rem' }}>

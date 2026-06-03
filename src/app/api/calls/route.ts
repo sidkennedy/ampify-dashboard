@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       clinicId, patientName, dob, memberId, insurancePhone, codesRequested,
       providerNPI, clinicTaxId, clinicName, clinicAddress,
       verificationType, dateOfService, planType, state, diagnosisCode,
-      callerName, callbackNumber,
+      callbackNumber,
     } = body
 
     // Check insurance hours
@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
         clinic_tax_id: clinicTaxId,
         clinic_name: clinicName,
         clinic_address: clinicAddress,
-        caller_name: callerName ?? null,
         callback_number: callbackNumber ?? null,
         phone_number_id: process.env.VAPI_PHONE_NUMBER_ID,
         // New template fields
@@ -81,7 +80,6 @@ export async function POST(req: NextRequest) {
       planType: planType ?? '',
       state: state ?? 'NY',
       diagnosisCode: diagnosisCode ?? '',
-      callerName: callerName ?? '',
       callbackNumber: callbackNumber ?? '',
     })
 

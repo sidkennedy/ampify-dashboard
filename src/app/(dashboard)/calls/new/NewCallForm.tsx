@@ -10,7 +10,6 @@ interface Props {
   clinicTaxId: string
   clinicName: string
   clinicAddress: string
-  callerName: string
   callbackNumber: string
 }
 
@@ -18,7 +17,7 @@ const TEMPLATES_ORDER: VerificationType[] = ['diagnostic', 'hearing_aid', 'abr',
 
 const PLAN_TYPES = ['HMO', 'PPO', 'EPO', 'POS', 'Medicare', 'Medicaid', 'Medicare Advantage', 'Other']
 
-export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicName, clinicAddress, callerName, callbackNumber }: Props) {
+export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicName, clinicAddress, callbackNumber }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -36,7 +35,6 @@ export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicNa
     clinicTaxId: clinicTaxId,
     clinicName: clinicName,
     clinicAddress: clinicAddress,
-    callerName: callerName,
     callbackNumber: callbackNumber,
   })
 
@@ -235,10 +233,6 @@ export default function NewCallForm({ clinicId, clinicNpi, clinicTaxId, clinicNa
           <div>
             <label className="label">Clinic Address</label>
             <input className="input" placeholder="123 Main St, City, ST 12345" value={form.clinicAddress} onChange={e => set('clinicAddress', e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Caller Name</label>
-            <input className="input" placeholder="Tammy" value={form.callerName} onChange={e => set('callerName', e.target.value)} />
           </div>
           <div>
             <label className="label">Callback Number</label>

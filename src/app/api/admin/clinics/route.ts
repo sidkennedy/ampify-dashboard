@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { name, email, password, npi, tax_id, address, caller_name, callback_number } = await req.json()
+    const { name, email, password, npi, tax_id, address, callback_number } = await req.json()
     if (!name?.trim() || !email?.trim() || !password?.trim()) {
       return NextResponse.json({ error: 'Name, email and password are required' }, { status: 400 })
     }
@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
         npi: npi || null,
         tax_id: tax_id || null,
         address: address || null,
-        caller_name: caller_name || null,
         callback_number: callback_number || null,
         status: 'active',
       })

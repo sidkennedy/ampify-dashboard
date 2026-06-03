@@ -1,8 +1,7 @@
--- Per-clinic caller identity (for multi-tenant scaling)
--- The AI introduces itself with these on insurance calls.
-ALTER TABLE clinics ADD COLUMN IF NOT EXISTS caller_name text;
+-- Per-clinic callback number (for multi-tenant scaling).
+-- Caller NAME is hardcoded to "Ben Letterman" in the Vapi prompt — not configurable.
+-- The AI gives this callback number if an insurance rep asks for one.
 ALTER TABLE clinics ADD COLUMN IF NOT EXISTS callback_number text;
 
--- Snapshot the caller identity onto each call record (same pattern as clinic_name/clinic_address)
-ALTER TABLE calls ADD COLUMN IF NOT EXISTS caller_name text;
+-- Snapshot the callback number onto each call record (same pattern as clinic_name/clinic_address)
 ALTER TABLE calls ADD COLUMN IF NOT EXISTS callback_number text;

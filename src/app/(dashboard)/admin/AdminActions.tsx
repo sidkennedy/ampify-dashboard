@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 export default function AdminActions() {
   const router = useRouter()
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', npi: '', tax_id: '', address: '', caller_name: '', callback_number: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', npi: '', tax_id: '', address: '', callback_number: '' })
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -25,7 +25,7 @@ export default function AdminActions() {
       setMsg(`Error: ${data.error}`)
     } else {
       setMsg('Clinic created! Send them their email and password directly.')
-      setForm({ name: '', email: '', password: '', npi: '', tax_id: '', address: '', caller_name: '', callback_number: '' })
+      setForm({ name: '', email: '', password: '', npi: '', tax_id: '', address: '', callback_number: '' })
       router.refresh()
       setTimeout(() => { setShowCreate(false); setMsg('') }, 4000)
     }
@@ -88,15 +88,9 @@ export default function AdminActions() {
                 <input className="input" placeholder="123 Main St, City, ST 12345" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <label className="label">Caller Name</label>
-                  <input className="input" placeholder="e.g. Tammy" value={form.caller_name} onChange={e => setForm(f => ({ ...f, caller_name: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="label">Callback Number</label>
-                  <input className="input" placeholder="(315) 468-2985" value={form.callback_number} onChange={e => setForm(f => ({ ...f, callback_number: e.target.value }))} />
-                </div>
+              <div>
+                <label className="label">Callback Number</label>
+                <input className="input" placeholder="(315) 468-2985" value={form.callback_number} onChange={e => setForm(f => ({ ...f, callback_number: e.target.value }))} />
               </div>
             </div>
 
