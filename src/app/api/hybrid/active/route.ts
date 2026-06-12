@@ -36,6 +36,9 @@ export async function GET() {
       .from('calls')
       .select('id, patient_name, dob, member_id, insurance_phone, vapi_call_id, status, channel, ended_reason, started_at')
       .eq('channel', 'hybrid_call')
+      // Only calls ACTUALLY fired to Vapi — a recommended-but-not-placed hybrid call
+      // has channel=hybrid_call but no vapi_call_id, and must NOT trigger the banner.
+      .not('vapi_call_id', 'is', null)
       .or(`status.eq.in_progress,started_at.gte.${since}`)
       .order('started_at', { ascending: false, nullsFirst: false })
       .limit(1)

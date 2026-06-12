@@ -58,6 +58,7 @@ export default function HybridCallBanner() {
   const [call, setCall] = useState<ActiveCall | null>(null)
   const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed())
   const [retrying, setRetrying] = useState(false)
+  const [suppressUntil, setSuppressUntil] = useState(0) // temporary hide for live stages
   const prevStage = useRef<Stage | null>(null)
 
   const poll = useCallback(async () => {
@@ -77,7 +78,8 @@ export default function HybridCallBanner() {
   // Chime + a fresh data pull the moment the call reaches the transfer (phone ringing).
   useEffect(() => {
     if (call && call.stage !== prevStage.current) {
-      if (call.stage === 'transferred') { playChime(); router.refresh() }
+      // The "answer your phone" moment always overrides a temporary dismiss.
+      if (call.stage === 'transferred') { playChime(); setSuppressUntil(0); router.refresh() }
       prevStage.current = call.stage
     }
     if (!call) prevStage.current = null
@@ -86,6 +88,8 @@ export default function HybridCallBanner() {
   if (!call) return null
   const terminal = call.stage === 'transferred' || call.stage === 'failed'
   if (terminal && dismissed.has(`${call.id}:${call.stage}`)) return null
+  // Live stage temporarily dismissed — stays hidden ~60s, then reappears (call's still active).
+  if (!terminal && Date.now() < suppressUntil) return null
 
   const ui = STAGE_UI[call.stage]
   const message: Record<Stage, string> = {
@@ -138,9 +142,12 @@ export default function HybridCallBanner() {
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: ui.accent, animation: 'ampifyBlink 1.1s ease-in-out infinite' }} />
         </span>
-        {terminal && (
-          <button onClick={dismiss} aria-label="Dismiss" style={{ background: 'transparent', border: 'none', color: '#9CA3AF', fontSize: '1.1rem', cursor: 'pointer', lineHeight: 1, padding: 0, marginLeft: '0.25rem' }}>×</button>
-        )}
+        <button
+          onClick={() => (terminal ? dismiss() : setSuppressUntil(Date.now() + 60000))}
+          aria-label={terminal ? 'Dismiss' : 'Hide for a minute'}
+          title={terminal ? 'Dismiss' : 'Hide — reappears in a minute'}
+          style={{ background: 'transparent', border: 'none', color: '#9CA3AF', fontSize: '1.1rem', cursor: 'pointer', lineHeight: 1, padding: 0, marginLeft: '0.25rem' }}
+        >×</button>
       </div>
 
       {/* Body */}
