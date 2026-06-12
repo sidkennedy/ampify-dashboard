@@ -240,6 +240,7 @@ export default function CallDetailTabs({ call }: { call: Call }) {
                 <Row label="Prior auth required" value={yesno(elig.plan?.priorAuthRequired)} />
                 <Row label="Prior-auth / UM phone" value={elig.plan?.priorAuthPhone} />
                 <Row label="Referral required" value={yesno(elig.plan?.referralRequired)} />
+                <Row label="PCP required" value={yesno(elig.plan?.pcpRequired)} />
                 <Row label="Funding" value={elig.plan?.fundingType} />
                 <Row label="Gender" value={elig.member?.gender} />
                 <Row label="Address" value={elig.member?.address} />
@@ -259,6 +260,24 @@ export default function CallDetailTabs({ call }: { call: Call }) {
                 <Row label="Office / audiology copay" value={money(cop?.audiologyVisit)} />
                 <Row label="Hearing exam copay" value={money(cop?.hearingExam)} />
               </Card>
+
+              {/* Visit limits + exclusions — payer-dependent, captured electronically */}
+              {((b?.limitations?.length ?? 0) > 0 || (b?.exclusions?.length ?? 0) > 0) && (
+                <Card title="Limits & exclusions">
+                  {b?.limitations?.map((l, i) => (
+                    <Row key={`lim${i}`} label={l.service}
+                      value={[l.cap, l.remaining ? `${l.remaining} left` : null].filter(Boolean).join(' · ') || l.note || '—'} />
+                  ))}
+                  {(b?.exclusions?.length ?? 0) > 0 && (
+                    <div style={{ paddingTop: (b?.limitations?.length ?? 0) > 0 ? '0.625rem' : 0 }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#B91C1C', margin: '0 0 0.25rem' }}>Not covered</p>
+                      {b!.exclusions!.map((e, i) => (
+                        <p key={`ex${i}`} style={{ fontSize: '0.8125rem', color: '#374151', margin: '0.125rem 0' }}>• {e}</p>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )}
 
               {/* Hearing-aid section — only for HA verifications, only populated fields */}
               {isHA && ha && (

@@ -143,12 +143,21 @@ async function fireEligibility(params: StediEligibilityParams, includeFirstName:
 // nicknames, hyphenation, maiden names). Member ID + DOB is enough to match.
 export async function checkEligibility(params: StediEligibilityParams): Promise<StediEligibilityResponse> {
   let transactions = 1
-  const first = await fireEligibility(params, true)
+  let first = await fireEligibility(params, true)
+  // Transient payer outage (AAA code 42 "Unable to Respond at Current Time") — not a
+  // real failure, the payer was momentarily down. Retry once before giving up.
+  const isTransient = (r: StediEligibilityResponse) =>
+    !eligibilityHasBenefits(r) && (r.errors ?? []).some(e => e.code === '42' || /unable to respond/i.test(e.description ?? ''))
+  if (isTransient(first)) {
+    transactions += 1
+    const again = await fireEligibility(params, true)
+    if (eligibilityHasBenefits(again) || !isTransient(again)) first = again
+  }
   const nameRejected = (first.errors ?? []).some(e => e.code && NAME_ERROR_CODES.has(e.code))
   const canRetry = nameRejected && !!params.subscriberFirstName && !!(params.subscriberMemberId && params.subscriberDateOfBirth)
   let chosen = first
   if (canRetry) {
-    transactions = 2
+    transactions += 1
     const retry = await fireEligibility(params, false)
     if (eligibilityHasBenefits(retry) || (retry.errors ?? []).length < (first.errors ?? []).length) chosen = retry
   }
@@ -343,6 +352,8 @@ export function mapStediToEligibility(resp: StediEligibilityResponse): Eligibili
   let umPhone: string | null = null
   let cobPrimary: string | null = null
   let cobPolicy: string | null = null
+  const limitsByService = new Map<string, { cap?: string; remaining?: string; note?: string }>()
+  const exclusions = new Set<string>()
 
   for (const b of bi) {
     const name = b.name
@@ -423,6 +434,31 @@ export function mapStediToEligibility(resp: StediEligibilityResponse): Eligibili
         cobPolicy = addl?.policyNumber ?? null
       }
     }
+    // Visit / quantity limits — payer-dependent, valuable (any audiology cap especially).
+    const qtyRaw = (b as { benefitQuantity?: string | number }).benefitQuantity
+    if (name === 'Limitations' && qtyRaw != null) {
+      const svc = sts.join(' / ') || 'Benefit'
+      const qq = (b as { quantityQualifier?: string }).quantityQualifier ?? ''
+      const val = `${qtyRaw}${qq ? ' ' + qq : ''}`.trim()
+      const entry = limitsByService.get(svc) ?? {}
+      if (cls === 'remaining' || /remaining/i.test(tq)) entry.remaining = val
+      else entry.cap = `${val}${tq && !/contract/i.test(tq) ? ' / ' + tq : ''}`
+      if (ai && !entry.note) entry.note = ai
+      limitsByService.set(svc, entry)
+      if (isAudio && !aud.visitLimit) aud.visitLimit = `${val}${tq ? ' / ' + tq : ''}`
+    }
+    // Exclusions / non-covered services.
+    if (name === 'Non-Covered' || name === 'Exclusions') {
+      const txt = [sts.join(' / '), ai].filter(Boolean).join(' — ').slice(0, 200)
+      if (txt) exclusions.add(txt)
+    }
+    // In-network confirmation, funding type, PCP requirement (text-based, payer-dependent).
+    if (/participating in this patient.?s network|provider .*participating|is participating/i.test(ai)) {
+      out.plan!.isInNetworkVerified = out.plan!.isInNetworkVerified ?? true
+    }
+    if (/self.?funded/i.test(ai)) out.plan!.fundingType = out.plan!.fundingType ?? 'Self-funded'
+    if (/pcp.*not required|pcp selection not required/i.test(ai)) out.plan!.pcpRequired = false
+    else if (/\bpcp\b[^.]*required/i.test(ai)) out.plan!.pcpRequired = out.plan!.pcpRequired ?? true
   }
   if (haNotes.size) ha.coverageNotes = Array.from(haNotes).join(' | ').slice(0, 400)
   if (insuranceType) out.plan!.insuranceType = insuranceType
@@ -435,6 +471,12 @@ export function mapStediToEligibility(resp: StediEligibilityResponse): Eligibili
       note: `${payer.name ?? 'This plan'} is SECONDARY — ${cobPrimary} pays first. Bill ${cobPrimary} before this plan.`,
     }
   }
+  if (limitsByService.size) {
+    out.benefits!.limitations = Array.from(limitsByService.entries()).map(([service, v]) => ({
+      service, cap: v.cap ?? null, remaining: v.remaining ?? null, note: v.note ?? null,
+    }))
+  }
+  if (exclusions.size) out.benefits!.exclusions = Array.from(exclusions).slice(0, 12)
 
   // Did we capture any real coverage/cost-share?
   const hasRealBenefits = ded.individualTotal != null || ded.individualRemaining != null

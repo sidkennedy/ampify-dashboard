@@ -149,6 +149,10 @@ export interface EligibilityOutput {
   } | null
   benefits?: {
     benefitPeriod?: string | null
+    // Visit / quantity limits (e.g. "20 chiro visits / yr"), payer-dependent.
+    limitations?: Array<{ service: string; cap?: string | null; remaining?: string | null; note?: string | null }>
+    // Services the plan explicitly does NOT cover.
+    exclusions?: string[]
     deductible?: {
       individualTotal?: number | null
       individualRemaining?: number | null
