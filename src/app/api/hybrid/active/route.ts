@@ -28,13 +28,16 @@ export async function GET() {
       .from('profiles').select('clinic_id, role').eq('id', user.id).single()
     const scopeToClinic = profile?.clinic_id && profile.role !== 'superadmin'
 
+    // Recency is about the CALL, not the record: a verification created days ago
+    // (during the Stedi pull) can have a call fired on it today. Key off started_at,
+    // and always include anything still in_progress regardless of age (long holds).
     const since = new Date(Date.now() - 15 * 60 * 1000).toISOString()
     let q = supabase
       .from('calls')
-      .select('id, patient_name, dob, member_id, insurance_phone, vapi_call_id, status, channel, ended_reason, created_at')
+      .select('id, patient_name, dob, member_id, insurance_phone, vapi_call_id, status, channel, ended_reason, started_at')
       .eq('channel', 'hybrid_call')
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
+      .or(`status.eq.in_progress,started_at.gte.${since}`)
+      .order('started_at', { ascending: false, nullsFirst: false })
       .limit(1)
     if (scopeToClinic) q = q.eq('clinic_id', profile!.clinic_id)
     const { data: rows } = await q
