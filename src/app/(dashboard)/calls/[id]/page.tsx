@@ -6,8 +6,10 @@ import ChannelBadge from '@/components/calls/ChannelBadge'
 import CallDetailTabs from './CallDetailTabs'
 import FireCallButton from './FireCallButton'
 import GapCapture from '@/components/calls/GapCapture'
+import CallInsuranceButton from '@/components/calls/CallInsuranceButton'
 import Link from 'next/link'
 import { clinicHasFeature } from '@/lib/features'
+import { getPayerByPhone } from '@/lib/payer-registry'
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,6 +21,12 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   ])
 
   if (!call) notFound()
+
+  // Manual "Call insurance" routing: resolve payer + mode from the stored dial number (no Stedi).
+  const callPayer = getPayerByPhone(call.insurance_phone)
+  const callable = !!call.insurance_phone && call.insurance_phone !== 'electronic'
+  const manualCallMode: 'hybrid' | 'autonomous' = callPayer?.acceptsBots ? 'autonomous' : 'hybrid'
+  const isInProgress = call.status === 'in_progress'
 
   let isSuperAdmin = false
   let canCreateClaim = false
@@ -53,6 +61,9 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {!isInProgress && (
+              <CallInsuranceButton callId={call.id} payerName={callPayer?.name ?? null} mode={manualCallMode} callable={callable} />
+            )}
             {canCreateClaim && (
               <Link href={`/claims?from=${call.id}`} className="btn-secondary" style={{ fontSize: '0.8125rem' }}>
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
