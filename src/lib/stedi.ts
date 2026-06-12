@@ -267,22 +267,52 @@ function setMaxTotal(obj: Record<string, number | null | undefined>, key: string
   if (cur == null || v > cur) obj[key] = v
 }
 
+function fmtStediDateOut(d?: string | null): string | null {
+  if (!d) return null
+  const digits = d.replace(/\D/g, '')
+  if (digits.length !== 8) return d
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`
+}
+function fmtPhoneOut(p?: string | null): string | null {
+  if (!p) return null
+  const d = p.replace(/\D/g, '')
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
+  return p
+}
+function fmtAddressOut(a: unknown): string | null {
+  if (!a || typeof a !== 'object') return null
+  const o = a as Record<string, string>
+  const parts = [o.address1, o.address2, [o.city, o.state].filter(Boolean).join(', '), o.postalCode].filter(Boolean)
+  return parts.join(', ') || null
+}
+
 export function mapStediToEligibility(resp: StediEligibilityResponse): EligibilityOutput {
   const sub = (resp.subscriber ?? {}) as Record<string, string>
+  const subRaw = (resp.subscriber ?? {}) as Record<string, unknown>
   const plan = (resp.planInformation ?? {}) as Record<string, string>
+  const planDateInfo = (resp.planDateInformation ?? {}) as Record<string, string>
+  const planStatus = (resp.planStatus as Array<Record<string, unknown>> | undefined) ?? []
   const payer = resp.payer ?? {}
   const bi = resp.benefitsInformation ?? []
+
+  // Real plan name lives in planStatus[].planDetails (e.g. "CLASSIC BLUE COMPREHENSIVE");
+  // groupDescription is the EMPLOYER/sponsor, not the plan.
+  const planDetailsName = (planStatus.find(p => p.planDetails)?.planDetails as string | undefined) ?? null
 
   const out: EligibilityOutput = {
     member: {
       patientName: [sub.firstName, sub.lastName].filter(Boolean).join(' ') || '',
       dob: sub.dateOfBirth || '',
       memberId: sub.memberId || '',
+      gender: sub.gender || null,
+      address: fmtAddressOut(subRaw.address),
       groupNumber: plan.groupNumber || null,
+      groupName: plan.groupDescription || null,
       eligibilityStatus: null,
+      eligibilityEffectiveDate: fmtStediDateOut(planDateInfo.planBegin),
     },
     plan: {
-      planName: plan.groupDescription || plan.planNumber || null,
+      planName: planDetailsName || plan.groupDescription || plan.planNumber || null,
       payerName: payer.name || null,
       priorAuthRequired: null,
       fundingType: null,
@@ -309,6 +339,10 @@ export function mapStediToEligibility(resp: StediEligibilityResponse): Eligibili
   const ha = out.benefits!.hearingAidBenefit!
   const haNotes = new Set<string>()
   let redirectEntity: string | null = null
+  let insuranceType: string | null = null
+  let umPhone: string | null = null
+  let cobPrimary: string | null = null
+  let cobPolicy: string | null = null
 
   for (const b of bi) {
     const name = b.name
@@ -372,8 +406,35 @@ export function mapStediToEligibility(resp: StediEligibilityResponse): Eligibili
       const ent = (b as { benefitsRelatedEntity?: { entityName?: string } }).benefitsRelatedEntity
       if (ent?.entityName && !redirectEntity) redirectEntity = ent.entityName
     }
+    // Plan-level metadata + utilization-management (prior-auth) contact, from Active Coverage.
+    if (name === 'Active Coverage') {
+      const it = (b as Record<string, unknown>).insuranceType as string | undefined
+      if (it && !insuranceType) insuranceType = it
+      const ent = (b as { benefitsRelatedEntity?: { contactInformation?: { contacts?: Array<{ communicationMode?: string; communicationNumber?: string }> } } }).benefitsRelatedEntity
+      const tel = ent?.contactInformation?.contacts?.find(c => /tele|phone/i.test(c.communicationMode ?? ''))?.communicationNumber
+      if (tel && !umPhone) umPhone = tel
+    }
+    // Coordination of benefits — a payer that pays BEFORE this one (e.g. Medicare primary).
+    if (name === 'Other or Additional Payor') {
+      const ent = (b as { benefitsRelatedEntity?: { entityIdentifier?: string; entityName?: string } }).benefitsRelatedEntity
+      const addl = (b as { benefitsAdditionalInformation?: { policyNumber?: string } }).benefitsAdditionalInformation
+      if (ent?.entityName && /primary/i.test(ent.entityIdentifier ?? '') && !cobPrimary) {
+        cobPrimary = ent.entityName
+        cobPolicy = addl?.policyNumber ?? null
+      }
+    }
   }
   if (haNotes.size) ha.coverageNotes = Array.from(haNotes).join(' | ').slice(0, 400)
+  if (insuranceType) out.plan!.insuranceType = insuranceType
+  if (umPhone) out.plan!.priorAuthPhone = fmtPhoneOut(umPhone)
+  if (cobPrimary) {
+    out.coordinationOfBenefits = {
+      primaryPayer: cobPrimary,
+      primaryPolicyNumber: cobPolicy,
+      isSecondary: true,
+      note: `${payer.name ?? 'This plan'} is SECONDARY — ${cobPrimary} pays first. Bill ${cobPrimary} before this plan.`,
+    }
+  }
 
   // Did we capture any real coverage/cost-share?
   const hasRealBenefits = ded.individualTotal != null || ded.individualRemaining != null

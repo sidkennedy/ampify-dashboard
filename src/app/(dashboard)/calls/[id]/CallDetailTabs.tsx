@@ -209,19 +209,40 @@ export default function CallDetailTabs({ call }: { call: Call }) {
           )}
           {elig && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {/* Coordination of benefits — who pays first. High priority, full width. */}
+              {elig.coordinationOfBenefits?.primaryPayer && (
+                <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '0.75rem', padding: '0.875rem 1.25rem' }}>
+                  <span aria-hidden style={{ fontSize: '1.25rem', lineHeight: 1.2 }}>🔀</span>
+                  <div>
+                    <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#9A3412', margin: '0 0 0.125rem' }}>
+                      Coordination of benefits — {elig.coordinationOfBenefits.primaryPayer} pays first
+                    </p>
+                    <p style={{ fontSize: '0.8125rem', color: '#7C2D12', margin: 0 }}>
+                      {elig.coordinationOfBenefits.note ?? `${elig.plan?.payerName ?? 'This plan'} is secondary.`}
+                      {elig.coordinationOfBenefits.primaryPolicyNumber ? ` · Primary policy #${elig.coordinationOfBenefits.primaryPolicyNumber}` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Coverage + plan */}
               <Card title="Coverage">
                 <Row label="Status" value={elig.member?.eligibilityStatus} strong />
                 <Row label="Effective" value={elig.member?.eligibilityEffectiveDate} />
                 <Row label="Ends" value={elig.member?.eligibilityEndDate} />
-                <Row label="Plan" value={elig.plan?.planName} />
+                <Row label="Plan" value={elig.plan?.planName} strong />
                 <Row label="Plan type" value={elig.plan?.planType} />
+                <Row label="Insurance type" value={elig.plan?.insuranceType} />
                 <Row label="Payer" value={elig.plan?.payerName} />
+                <Row label="Employer / group" value={elig.member?.groupName} />
                 <Row label="Group #" value={elig.member?.groupNumber} />
                 <Row label="In-network" value={yesno(elig.plan?.isInNetworkVerified)} />
                 <Row label="Prior auth required" value={yesno(elig.plan?.priorAuthRequired)} />
+                <Row label="Prior-auth / UM phone" value={elig.plan?.priorAuthPhone} />
                 <Row label="Referral required" value={yesno(elig.plan?.referralRequired)} />
                 <Row label="Funding" value={elig.plan?.fundingType} />
+                <Row label="Gender" value={elig.member?.gender} />
+                <Row label="Address" value={elig.member?.address} />
               </Card>
 
               {/* Patient responsibility detail */}

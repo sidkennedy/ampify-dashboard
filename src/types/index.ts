@@ -117,7 +117,10 @@ export interface EligibilityOutput {
     patientName: string
     dob: string
     memberId: string
+    gender?: string | null
+    address?: string | null
     groupNumber?: string | null
+    groupName?: string | null // employer / group sponsor
     coverageLevel?: string | null
     eligibilityStatus?: string | null
     eligibilityEffectiveDate?: string | null
@@ -128,13 +131,22 @@ export interface EligibilityOutput {
     planType?: string | null
     payerName?: string | null
     networkName?: string | null
+    insuranceType?: string | null // e.g. Medicare Supplement / Other — COB signal
     pcpRequired?: boolean | null
     referralRequired?: boolean | null
     priorAuthRequired?: boolean | null
+    priorAuthPhone?: string | null // utilization-management contact
     isInNetworkVerified?: boolean | null
     medicalNecessityRequired?: boolean | null
     fundingType?: string | null
   }
+  // Coordination of benefits — who pays first. Critical for Medicare-age audiology.
+  coordinationOfBenefits?: {
+    primaryPayer?: string | null
+    primaryPolicyNumber?: string | null
+    isSecondary?: boolean | null
+    note?: string | null
+  } | null
   benefits?: {
     benefitPeriod?: string | null
     deductible?: {
