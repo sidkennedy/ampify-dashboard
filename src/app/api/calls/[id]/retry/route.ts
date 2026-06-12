@@ -50,28 +50,37 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       } catch { billerPhone = DEFAULT_BILLER_PHONE }
     }
 
-    const { callId: vapiCallId } = await startVapiCall({
-      patientName: call.patient_name,
-      dob: call.dob,
-      memberId: call.member_id,
-      providerNPI: call.provider_npi ?? '',
-      clinicTaxId: call.clinic_tax_id ?? '',
-      clinicName: call.clinic_name ?? '',
-      clinicAddress: call.clinic_address ?? '',
-      codesRequested: call.codes_requested,
-      insurancePhone: call.insurance_phone,
-      verificationType: call.verification_type ?? '',
-      dateOfService: call.date_of_service ?? '',
-      planType: call.plan_type ?? '',
-      state: call.state ?? '',
-      diagnosisCode: call.diagnosis_code ?? '',
-      callbackNumber: call.callback_number ?? '',
-      subscriberName: call.subscriber_name ?? '',
-      subscriberDob: call.subscriber_dob ?? '',
-      callMode: isHybrid ? 'hybrid' : 'autonomous',
-      billerPhone,
-      target: isHybrid ? 'hybrid' : 'payer',
-    })
+    let vapiCallId: string
+    try {
+      ({ callId: vapiCallId } = await startVapiCall({
+        patientName: call.patient_name,
+        dob: call.dob,
+        memberId: call.member_id,
+        providerNPI: call.provider_npi ?? '',
+        clinicTaxId: call.clinic_tax_id ?? '',
+        clinicName: call.clinic_name ?? '',
+        clinicAddress: call.clinic_address ?? '',
+        codesRequested: call.codes_requested,
+        insurancePhone: call.insurance_phone,
+        verificationType: call.verification_type ?? '',
+        dateOfService: call.date_of_service ?? '',
+        planType: call.plan_type ?? '',
+        state: call.state ?? '',
+        diagnosisCode: call.diagnosis_code ?? '',
+        callbackNumber: call.callback_number ?? '',
+        subscriberName: call.subscriber_name ?? '',
+        subscriberDob: call.subscriber_dob ?? '',
+        callMode: isHybrid ? 'hybrid' : 'autonomous',
+        billerPhone,
+        target: isHybrid ? 'hybrid' : 'payer',
+      }))
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'call failed to start'
+      await supabase.from('calls').update({
+        status: 'failed', ended_reason: reason, ended_at: new Date().toISOString(),
+      }).eq('id', id)
+      return NextResponse.json({ error: reason, status: 'failed' }, { status: 502 })
+    }
 
     await supabase
       .from('calls')

@@ -50,7 +50,7 @@ const STAGE_UI: Record<Stage, { accent: string; bg: string; icon: string; label:
   dialing:     { accent: '#1D4ED8', bg: '#EFF6FF', icon: '☎️', label: 'AI CALL STARTING', pulse: false },
   working:     { accent: '#B45309', bg: '#FFFBEB', icon: '🤖', label: 'AI CALL IN PROGRESS', pulse: true },
   transferred: { accent: '#15803D', bg: '#F0FDF4', icon: '📞', label: 'CONNECTING YOU NOW', pulse: true },
-  failed:      { accent: '#B91C1C', bg: '#FEF2F2', icon: '⚠️', label: "CALL DIDN'T CONNECT", pulse: false },
+  failed:      { accent: '#B91C1C', bg: '#FEF2F2', icon: '⚠️', label: 'CALL ERROR', pulse: false },
 }
 
 export default function HybridCallBanner() {
@@ -92,13 +92,13 @@ export default function HybridCallBanner() {
     dialing: `Placing the call to ${call.payerName}…`,
     working: `Reaching a live rep at ${call.payerName}`,
     transferred: 'Answer your phone now',
-    failed: `Couldn't reach a rep at ${call.payerName}`,
+    failed: "The call didn't go through",
   }
   const sub: Record<Stage, string> = {
     dialing: "We'll connect you the moment a rep picks up — stay nearby.",
     working: "We'll connect you shortly — your phone will ring when a human answers.",
     transferred: `You're being connected to ${call.payerName}.`,
-    failed: `Reason: ${call.endedReason ?? 'unknown'}.`,
+    failed: `${call.endedReason ?? 'unknown error'} — open the file to try again.`,
   }
 
   function dismiss() {

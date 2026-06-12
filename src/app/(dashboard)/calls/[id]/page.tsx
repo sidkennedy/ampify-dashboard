@@ -85,6 +85,20 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
+      {/* Persistent error state — a failed call must never look like it's still working. */}
+      {call.status === 'failed' && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+          <span aria-hidden style={{ fontSize: '1.25rem', lineHeight: 1.2 }}>⚠️</span>
+          <div>
+            <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#B91C1C', margin: '0 0 0.125rem' }}>This call didn&apos;t go through</p>
+            <p style={{ fontSize: '0.8125rem', color: '#7F1D1D', margin: 0 }}>
+              Error: <code style={{ background: '#FEE2E2', padding: '0.0625rem 0.375rem', borderRadius: '0.25rem', fontSize: '0.78125rem' }}>{call.ended_reason ?? 'unknown error'}</code>
+              {' '}— use <strong>Call insurance</strong> above to try again.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Channel-aware, biller-first result view (hero + cost summary + details) */}
       <CallDetailTabs call={call} />
 
