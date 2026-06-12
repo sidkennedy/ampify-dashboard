@@ -10,6 +10,7 @@ import CallInsuranceButton from '@/components/calls/CallInsuranceButton'
 import Link from 'next/link'
 import { clinicHasFeature } from '@/lib/features'
 import { getPayerByPhone } from '@/lib/payer-registry'
+import { isInsuranceOpen, getNextOpenTime } from '@/lib/insurance-hours'
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -33,6 +34,8 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   const callPlaced = !!call.vapi_call_id
   const callRecommended = (call.channel === 'hybrid_call' || call.channel === 'autonomous_call')
     && !callPlaced && !isInProgress && call.status !== 'failed'
+  const linesOpen = isInsuranceOpen()
+  const nextOpen = linesOpen ? null : getNextOpenTime()
   const recReason = call.verification_type === 'hearing_aid'
     ? 'to confirm whether the hearing-aid benefit is carved out to a third party (→ self-pay) or covered directly (→ bill the payer & capture the allowance)'
     : (['abr', 'apd', 'vestibular'].includes(call.verification_type ?? '')
@@ -108,6 +111,11 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
             <p style={{ fontSize: '0.8125rem', color: '#374151', margin: 0 }}>
               The electronic check captured the foundation below. A call is recommended {recReason}. Use <strong>Call insurance</strong> (top-right) when you&apos;re ready.
             </p>
+            {!linesOpen && (
+              <p style={{ fontSize: '0.8125rem', color: '#B45309', fontWeight: 600, margin: '0.5rem 0 0' }}>
+                ⏰ Insurance phone lines look closed right now — they reopen {nextOpen ? format(nextOpen, 'EEE h:mm a') + ' ET' : 'during business hours'}. A call placed now will likely reach a closed line.
+              </p>
+            )}
           </div>
         </div>
       )}
