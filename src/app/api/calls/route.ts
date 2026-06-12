@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { startVapiCall, toE164 } from '@/lib/vapi'
-import { shouldSchedule } from '@/lib/insurance-hours'
 import {
   checkEligibility, mapStediToEligibility, serviceTypeCodesFor,
   eligibilityHasBenefits, eligibilityErrors, stediTransactionsOf, STEDI_COST_PER_CHECK,
@@ -61,22 +59,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Select a payer before submitting.' }, { status: 400 })
     }
 
-    // Clinic config: vendor contracts (default []) + biller phone for hybrid transfers.
+    // Clinic config: which carve-out vendors this clinic is contracted with (drives routing).
     let contractedVendors: string[] = []
-    let clinicBillerPhone: string | null = null
     if (clinicId) {
-      const { data: clinicRow, error: clinicErr } = await supabase
-        .from('clinics').select('vendor_contracts, biller_phone').eq('id', clinicId).single()
-      const row = clinicRow as { vendor_contracts?: string[]; biller_phone?: string | null } | null
-      if (!clinicErr && row) {
-        if (Array.isArray(row.vendor_contracts)) contractedVendors = row.vendor_contracts
-        clinicBillerPhone = row.biller_phone ?? null
-      }
+      const { data: clinicRow } = await supabase
+        .from('clinics').select('vendor_contracts').eq('id', clinicId).single()
+      const vc = (clinicRow as { vendor_contracts?: string[] } | null)?.vendor_contracts
+      if (Array.isArray(vc)) contractedVendors = vc
     }
-    // Where hybrid calls transfer the live rep. Clinic's biller line, else system default (testing).
-    const DEFAULT_BILLER_PHONE = '+17473898407'
-    let billerPhone = DEFAULT_BILLER_PHONE
-    try { billerPhone = clinicBillerPhone ? toE164(clinicBillerPhone) : DEFAULT_BILLER_PHONE } catch { billerPhone = DEFAULT_BILLER_PHONE }
 
     const plan = payer ? planRoute(vType, payer, contractedVendors) : null
 
@@ -141,11 +131,12 @@ export async function POST(req: NextRequest) {
     const terminalComplete = electronicDone || isCarveOutRefer // done, no call needed
     const needsCall = !terminalComplete && (channel === 'autonomous_call' || channel === 'hybrid_call') && !!dialNumber
 
-    // Insurance hours only gate phone calls.
-    const { schedule, scheduledFor } = needsCall ? shouldSchedule() : { schedule: false, scheduledFor: null }
-
     // ── 4. Insert the call record ───────────────────────────────────────
-    const status = terminalComplete ? 'completed' : schedule ? 'scheduled' : needsCall ? 'queued' : 'queued'
+    // Electronic always runs + completes here. A call is NEVER auto-fired — it's
+    // recommended and biller-initiated (it rings their phone, so they choose when).
+    // A call-needed verification is still "completed" electronically; the call is a
+    // separate optional escalation (channel + null vapi_call_id = "call recommended").
+    const status = (terminalComplete || needsCall) ? 'completed' : 'queued'
     const { data: callRecord, error: dbError } = await supabase
       .from('calls')
       .insert({
@@ -169,9 +160,8 @@ export async function POST(req: NextRequest) {
         channel, // electronic | autonomous_call | hybrid_call | carve_out_refer | needs_setup
         electronic_checks: electronicChecks,
         electronic_cost: Number((electronicChecks * STEDI_COST_PER_CHECK).toFixed(4)),
-        scheduled_for: schedule && scheduledFor ? scheduledFor.toISOString() : null,
         structured_output_eligibility: eligibilityOutput,
-        started_at: terminalComplete ? new Date().toISOString() : null,
+        started_at: (terminalComplete || needsCall) ? new Date().toISOString() : null,
         ended_at: terminalComplete ? new Date().toISOString() : null,
       })
       .select()
@@ -201,64 +191,21 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── 7. Outside insurance hours — scheduled ──────────────────────────
-    if (schedule) {
-      return NextResponse.json({ callId: callRecord.id, status: 'scheduled', channel, scheduledFor: scheduledFor?.toISOString() })
-    }
-
-    // ── 8. TRIAL_MODE — save without firing Vapi ────────────────────────
-    if (process.env.TRIAL_MODE === 'true') {
-      return NextResponse.json({ callId: callRecord.id, status: 'queued', channel, trialMode: true, electronicCaptured: electronicHadBenefits })
-    }
-
-    // ── 8b. One hybrid call at a time per clinic ────────────────────────
-    // The biller can only physically answer one transferred call, so never let a
-    // second hybrid go live alongside another. (Electronic checks are unaffected.)
-    if (channel === 'hybrid_call') {
-      const { data: liveHybrid } = await supabase
-        .from('calls')
-        .select('id, patient_name')
-        .eq('clinic_id', clinicId)
-        .eq('channel', 'hybrid_call')
-        .eq('status', 'in_progress')
-        .neq('id', callRecord.id)
-        .limit(1)
-      if (liveHybrid && liveHybrid.length > 0) {
-        return NextResponse.json({
-          callId: callRecord.id, status: 'queued', channel,
-          queuedBehind: liveHybrid[0].patient_name,
-          note: `A hybrid call for ${liveHybrid[0].patient_name} is already in progress. This one is queued — finish that call, then send this from its page.`,
-        })
-      }
-    }
-
-    // ── 9. Fire the Vapi call. Autonomous = AI completes it; hybrid = AI
-    //       navigates to a live rep then transfers to the clinic's biller. ──
-    const callMode = channel === 'hybrid_call' ? 'hybrid' : 'autonomous'
-    const target = channel === 'hybrid_call' ? 'hybrid' : (plan?.call?.target === 'vendor' ? 'vendor' : 'payer')
-    const { callId: vapiCallId } = await startVapiCall({
-      patientName, dob, memberId, providerNPI, clinicTaxId, clinicName, clinicAddress,
-      codesRequested,
-      insurancePhone: dialNumber,
-      verificationType: verificationType ?? '',
-      dateOfService: dateOfService ?? '',
-      planType: planType ?? '',
-      state: state ?? 'NY',
-      diagnosisCode: diagnosisCode ?? '',
-      callbackNumber: callbackNumber ?? '',
-      subscriberName: subscriberName ?? '',
-      subscriberDob: subscriberDob ?? '',
-      callMode,
-      billerPhone,
-      target,
+    // ── 7. Electronic done; a call is RECOMMENDED but NOT auto-fired. ─────
+    // The biller reviews the electronic result, then initiates the call themselves
+    // from the verification page (the Call button) if they decide it's needed.
+    const callTargetName = plan?.call?.target === 'vendor'
+      ? (plan?.call?.vendorName ?? 'the vendor')
+      : (payer?.name ?? 'the insurance company')
+    return NextResponse.json({
+      callId: callRecord.id, status: 'completed', channel,
+      electronicCaptured: electronicHadBenefits,
+      callRecommended: true,
+      callTarget: plan?.call?.target === 'vendor' ? 'vendor' : 'payer',
+      callTargetName,
+      callMode: channel === 'hybrid_call' ? 'hybrid' : 'autonomous',
+      note: `Electronic foundation captured. A call to ${callTargetName} is recommended — ${plan?.call?.reason ?? 'to complete the verification'}. Start it from the verification page when ready.`,
     })
-
-    await supabase
-      .from('calls')
-      .update({ vapi_call_id: vapiCallId, status: 'in_progress', started_at: new Date().toISOString() })
-      .eq('id', callRecord.id)
-
-    return NextResponse.json({ callId: callRecord.id, vapiCallId, status: 'in_progress', channel, electronicCaptured: electronicHadBenefits })
   } catch (err: unknown) {
     console.error('Call creation error:', err)
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to start call' }, { status: 500 })

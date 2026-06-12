@@ -28,6 +28,17 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   const manualCallMode: 'hybrid' | 'autonomous' = callPayer?.acceptsBots ? 'autonomous' : 'hybrid'
   const isInProgress = call.status === 'in_progress'
 
+  // Two-part flow: electronic ran; a call is RECOMMENDED (not auto-fired) when the
+  // channel is a call channel and no call has been placed yet.
+  const callPlaced = !!call.vapi_call_id
+  const callRecommended = (call.channel === 'hybrid_call' || call.channel === 'autonomous_call')
+    && !callPlaced && !isInProgress && call.status !== 'failed'
+  const recReason = call.verification_type === 'hearing_aid'
+    ? 'to confirm whether the hearing-aid benefit is carved out to a third party (→ self-pay) or covered directly (→ bill the payer & capture the allowance)'
+    : (['abr', 'apd', 'vestibular'].includes(call.verification_type ?? '')
+        ? 'to confirm procedure-specific coverage and any prior-auth requirement'
+        : 'to complete the verification')
+
   let isSuperAdmin = false
   let canCreateClaim = false
   if (user) {
@@ -84,6 +95,28 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
       </div>
+
+      {/* Two-part flow recommendation: electronic done → does the biller need a call? */}
+      {callRecommended && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+          <span aria-hidden style={{ fontSize: '1.25rem', lineHeight: 1.2 }}>📞</span>
+          <div>
+            <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#1D4ED8', margin: '0 0 0.125rem' }}>
+              Call recommended — {callPayer?.name ?? 'the insurance company'}
+              {manualCallMode === 'hybrid' ? ' (hybrid — your phone will ring)' : ' (automated)'}
+            </p>
+            <p style={{ fontSize: '0.8125rem', color: '#374151', margin: 0 }}>
+              The electronic check captured the foundation below. A call is recommended {recReason}. Use <strong>Call insurance</strong> (top-right) when you&apos;re ready.
+            </p>
+          </div>
+        </div>
+      )}
+      {call.channel === 'electronic' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '0.75rem', padding: '0.75rem 1.25rem', marginBottom: '1.5rem' }}>
+          <span aria-hidden>✅</span>
+          <span style={{ fontSize: '0.875rem', color: '#15803D', fontWeight: 500 }}>Verified electronically — no call needed.</span>
+        </div>
+      )}
 
       {/* Persistent error state — a failed call must never look like it's still working. */}
       {call.status === 'failed' && (

@@ -23,17 +23,19 @@ export default async function DashboardPage() {
   const scopeToClinic = clinicId && profile?.role !== 'superadmin'
 
   // Channel breakdown across all verifications.
-  let chQuery = supabase.from('calls').select('channel,status')
+  let chQuery = supabase.from('calls').select('channel,status,vapi_call_id')
   if (scopeToClinic) chQuery = chQuery.eq('clinic_id', clinicId)
   const { data: allRows } = await chQuery
 
   const rows = allRows ?? []
-  const n = (pred: (r: { channel: string | null; status: string }) => boolean) => rows.filter(pred).length
+  const n = (pred: (r: { channel: string | null; status: string; vapi_call_id: string | null }) => boolean) => rows.filter(pred).length
   const total = rows.length
   const electronic = n(r => r.channel === 'electronic')
   const referOut = n(r => r.channel === 'carve_out_refer')
-  const calls = n(r => r.channel === 'autonomous_call' || r.channel === 'hybrid_call')
-  const noCall = electronic + referOut
+  // Calls actually placed (vs. merely recommended) — the two-part flow only fires on biller request.
+  const calls = n(r => !!r.vapi_call_id)
+  const callsRecommended = n(r => (r.channel === 'autonomous_call' || r.channel === 'hybrid_call') && !r.vapi_call_id)
+  const noCall = total - calls
   const automatedPct = total ? Math.round((noCall / total) * 100) : 0
 
   let recentQuery = supabase.from('calls').select('*').order('created_at', { ascending: false }).limit(10)
@@ -67,7 +69,7 @@ export default async function DashboardPage() {
     { label: 'Verifications', value: total, sub: 'all time', color: '#0D1117' },
     { label: '⚡ Instant (electronic)', value: electronic, sub: 'no phone call', color: '#15803D' },
     { label: '↪ Self-pay', value: referOut, sub: 'HA carved out / self-pay', color: '#7C3AED' },
-    { label: '📞 Phone calls', value: calls, sub: 'AI + hybrid', color: '#1D4ED8' },
+    { label: '📞 Calls placed', value: calls, sub: callsRecommended > 0 ? `${callsRecommended} more recommended` : 'AI + hybrid', color: '#1D4ED8' },
   ]
 
   return (
