@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Template, Profile, Clinic } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { KNOWN_VENDORS } from '@/lib/payer-registry'
 
 interface Props {
   profile: any
@@ -33,6 +34,7 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
     tax_id: clinic?.tax_id ?? '',
     address: clinic?.address ?? '',
     callback_number: clinic?.callback_number ?? '',
+    biller_phone: clinic?.biller_phone ?? '',
   })
   const [clinicSaving, setClinicSaving] = useState(false)
   const [clinicMsg, setClinicMsg] = useState('')
@@ -48,6 +50,28 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
     setClinicMsg(error ? `Error: ${error.message}` : 'Saved!')
     if (!error) router.refresh()
     setTimeout(() => setClinicMsg(''), 3000)
+  }
+
+  // ── Hearing-aid vendor contracts ───────────────────────────────────────────
+  const [vendors, setVendors] = useState<string[]>(clinic?.vendor_contracts ?? [])
+  const [vendorSaving, setVendorSaving] = useState(false)
+  const [vendorMsg, setVendorMsg] = useState('')
+
+  function toggleVendor(name: string) {
+    setVendors(v => (v.includes(name) ? v.filter(x => x !== name) : [...v, name]))
+  }
+
+  async function saveVendors() {
+    setVendorSaving(true)
+    setVendorMsg('')
+    const { error } = await supabase
+      .from('clinics')
+      .update({ vendor_contracts: vendors })
+      .eq('id', clinic?.id ?? '')
+    setVendorSaving(false)
+    setVendorMsg(error ? `Error: ${error.message}` : 'Saved!')
+    if (!error) router.refresh()
+    setTimeout(() => setVendorMsg(''), 4000)
   }
 
   // ── My profile ────────────────────────────────────────────────────────────
@@ -158,6 +182,11 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
             <input className="input" placeholder="e.g. (315) 468-2985" value={clinicForm.callback_number} onChange={e => setClinicForm(f => ({ ...f, callback_number: e.target.value }))} />
             <p style={{ color: '#9CA3AF', fontSize: '0.75rem', marginTop: '0.375rem' }}>Callback number the AI gives if an insurance rep asks.</p>
           </div>
+          <div>
+            <label className="label">Biller Transfer Number</label>
+            <input className="input" placeholder="e.g. (315) 555-0142" value={clinicForm.biller_phone} onChange={e => setClinicForm(f => ({ ...f, biller_phone: e.target.value }))} />
+            <p style={{ color: '#9CA3AF', fontSize: '0.75rem', marginTop: '0.375rem' }}>For payers that don&apos;t accept automated calls, the AI waits on hold and transfers the live representative to this number.</p>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.25rem' }}>
           <button className="btn-primary" onClick={saveClinic} disabled={clinicSaving}>
@@ -166,6 +195,48 @@ export default function SettingsForms({ profile, clinic, templates: initialTempl
           {clinicMsg && (
             <span style={{ fontSize: '0.875rem', color: clinicMsg.startsWith('Error') ? '#DC2626' : '#16A34A', fontWeight: 500 }}>
               {clinicMsg}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Hearing-Aid Vendor Contracts ── */}
+      <div className="card">
+        <SectionHeader
+          title="Hearing-Aid Vendor Contracts"
+          description="Which hearing-aid TPAs is this clinic credentialed with? For payers that carve hearing-aid benefits out to a vendor, the system calls the vendor only if you're contracted. If you're not, it returns a private-pay / refer-out result instead — no wasted call."
+        />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
+          {KNOWN_VENDORS.map(name => {
+            const checked = vendors.includes(name)
+            return (
+              <label
+                key={name}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.625rem',
+                  padding: '0.75rem 0.875rem', borderRadius: '0.625rem', cursor: 'pointer',
+                  border: `1.5px solid ${checked ? '#15803D' : '#E5E7EB'}`,
+                  background: checked ? '#F0FDF4' : 'white',
+                }}
+              >
+                <input type="checkbox" checked={checked} onChange={() => toggleVendor(name)} style={{ width: 16, height: 16, accentColor: '#15803D', cursor: 'pointer' }} />
+                <span style={{ fontSize: '0.875rem', fontWeight: checked ? 600 : 400, color: checked ? '#15803D' : '#374151' }}>{name}</span>
+              </label>
+            )
+          })}
+        </div>
+        {vendors.length === 0 && (
+          <p style={{ color: '#9CA3AF', fontSize: '0.8125rem', marginTop: '0.875rem' }}>
+            Not contracted with any vendor — hearing-aid benefits that carve out to a TPA will return as private-pay / refer-out.
+          </p>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.25rem' }}>
+          <button className="btn-primary" onClick={saveVendors} disabled={vendorSaving}>
+            {vendorSaving ? 'Saving…' : 'Save Vendor Contracts'}
+          </button>
+          {vendorMsg && (
+            <span style={{ fontSize: '0.875rem', color: vendorMsg.startsWith('Error') ? '#DC2626' : '#16A34A', fontWeight: 500 }}>
+              {vendorMsg}
             </span>
           )}
         </div>

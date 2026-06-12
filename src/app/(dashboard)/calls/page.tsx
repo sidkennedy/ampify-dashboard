@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import StatusBadge from '@/components/calls/StatusBadge'
+import ChannelBadge from '@/components/calls/ChannelBadge'
+import ResultSnippet from '@/components/calls/ResultSnippet'
 import CallsSearchFilter from './CallsSearchFilter'
 import { VERIFICATION_TEMPLATES, VerificationType } from '@/lib/verification-templates'
 
@@ -73,16 +75,16 @@ export default async function CallsPage({
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0D1117' }}>Call History</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0D1117' }}>Verifications</h1>
           <p style={{ color: '#6B7280', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            {statusCounts.all} total calls
+            {statusCounts.all} total
           </p>
         </div>
         <Link href="/calls/new" className="btn-primary">
           <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          New Call
+          New Verification
         </Link>
       </div>
 
@@ -95,12 +97,12 @@ export default async function CallsPage({
               <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14v3z"/>
             </svg>
           </div>
-          <p style={{ fontWeight: 600, color: '#0D1117', marginBottom: '0.5rem' }}>No calls found</p>
+          <p style={{ fontWeight: 600, color: '#0D1117', marginBottom: '0.5rem' }}>No verifications found</p>
           <p style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-            {params.q || params.status ? 'Try adjusting your filters.' : 'Start your first eligibility verification call.'}
+            {params.q || params.status ? 'Try adjusting your filters.' : 'Start your first eligibility verification.'}
           </p>
           {!params.q && !params.status && (
-            <Link href="/calls/new" className="btn-primary" style={{ display: 'inline-flex' }}>Start a Call</Link>
+            <Link href="/calls/new" className="btn-primary" style={{ display: 'inline-flex' }}>New Verification</Link>
           )}
         </div>
       ) : (
@@ -108,7 +110,7 @@ export default async function CallsPage({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                {['Patient', 'Member ID', 'Type', 'Insurance Phone', 'Status', 'Duration', 'Cost', 'Date'].map(h => (
+                {['Patient', 'Member ID', 'Type', 'Channel', 'Result', 'Status', 'Date'].map(h => (
                   <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -130,22 +132,19 @@ export default async function CallsPage({
                       <TypeBadge type={call.verification_type} />
                     </Link>
                   </td>
-                  <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem', fontFamily: 'monospace' }}>
-                    <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>{call.insurance_phone}</Link>
+                  <td style={{ padding: '0.875rem 1rem' }}>
+                    <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <ChannelBadge channel={call.channel} />
+                    </Link>
+                  </td>
+                  <td style={{ padding: '0.875rem 1rem' }}>
+                    <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <ResultSnippet call={call} />
+                    </Link>
                   </td>
                   <td style={{ padding: '0.875rem 1rem' }}>
                     <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <StatusBadge status={call.status} />
-                    </Link>
-                  </td>
-                  <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem' }}>
-                    <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      {call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}m ${call.duration_seconds % 60}s` : '—'}
-                    </Link>
-                  </td>
-                  <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem' }}>
-                    <Link href={`/calls/${call.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      {call.cost ? `$${Number(call.cost).toFixed(3)}` : '—'}
                     </Link>
                   </td>
                   <td style={{ padding: '0.875rem 1rem', color: '#6B7280', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>

@@ -4,100 +4,90 @@ import { useState } from 'react'
 import { Call, EligibilityOutput, CodesOutput } from '@/types'
 import { VERIFICATION_TEMPLATES, VerificationType } from '@/lib/verification-templates'
 
-function YesNo({ val }: { val: boolean | null | undefined }) {
-  if (val === null || val === undefined) return <span style={{ color: '#9CA3AF' }}>—</span>
-  return <span style={{ color: val ? '#16A34A' : '#DC2626', fontWeight: 500 }}>{val ? 'Yes' : 'No'}</span>
+// ── tiny formatters ───────────────────────────────────────────────────────
+const money = (n: number | null | undefined) => (n === null || n === undefined ? null : `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`)
+const pct = (n: number | null | undefined) => (n === null || n === undefined ? null : `${n}%`)
+const yesno = (b: boolean | null | undefined) => (b === null || b === undefined ? null : b ? 'Yes' : 'No')
+const has = (v: unknown) => v !== null && v !== undefined && v !== ''
+
+function fmtDate(s: string | null | undefined) {
+  if (!s) return null
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function Dollar({ val }: { val: number | null | undefined }) {
-  if (val === null || val === undefined) return <span style={{ color: '#9CA3AF' }}>—</span>
-  return <span>${val.toLocaleString()}</span>
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+// A detail row that hides itself when there's no value (kills the wall of "—").
+function Row({ label, value, strong }: { label: string; value: React.ReactNode; strong?: boolean }) {
+  if (!has(value)) return null
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.625rem 0', borderBottom: '1px solid #F9FAFB' }}>
-      <span style={{ color: '#6B7280', fontSize: '0.875rem' }}>{label}</span>
-      <span style={{ color: '#0D1117', fontSize: '0.875rem', fontWeight: 500, textAlign: 'right', maxWidth: '60%' }}>{children}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', padding: '0.5rem 0', borderBottom: '1px solid #F3F4F6' }}>
+      <span style={{ color: '#6B7280', fontSize: '0.8125rem' }}>{label}</span>
+      <span style={{ color: strong ? '#0D1117' : '#374151', fontSize: '0.875rem', fontWeight: strong ? 700 : 500, textAlign: 'right', maxWidth: '62%' }}>{value}</span>
     </div>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children, accent }: { title?: string; children: React.ReactNode; accent?: string }) {
   return (
-    <div style={{ marginBottom: '1.5rem' }}>
-      <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>{title}</h3>
-      <div className="card" style={{ padding: '0 1.25rem' }}>{children}</div>
+    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: '0.75rem', padding: '1.125rem 1.25rem', borderLeft: accent ? `3px solid ${accent}` : undefined }}>
+      {title && <h3 style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>{title}</h3>}
+      {children}
     </div>
   )
 }
 
-function ConfidenceBadge({ val }: { val: string | null | undefined }) {
-  if (!val) return null
-  const colors: Record<string, string> = { high: 'badge-green', medium: 'badge-yellow', low: 'badge-red' }
-  return <span className={`badge ${colors[val] ?? 'badge-gray'}`}>{val} confidence</span>
+function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string | null; color?: string }) {
+  return (
+    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: '0.75rem', padding: '0.875rem 1rem', minWidth: 0 }}>
+      <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: '1.375rem', fontWeight: 700, color: color ?? '#0D1117', marginTop: '0.25rem', lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: '0.125rem' }}>{sub}</div>}
+    </div>
+  )
 }
 
 export default function CallDetailTabs({ call }: { call: Call }) {
-  const [tab, setTab] = useState<'overview' | 'codes' | 'transcript'>('overview')
   const elig: EligibilityOutput | null = call.structured_output_eligibility
   const codes: CodesOutput | null = call.structured_output_codes
+  const b = elig?.benefits
+  const outcome = elig?.outcome
 
-  const tabStyle = (t: string) => ({
-    padding: '0.625rem 1.25rem',
-    borderRadius: '0.5rem',
-    fontWeight: 500,
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-    border: 'none',
-    background: tab === t ? '#0D1117' : 'transparent',
-    color: tab === t ? 'white' : '#6B7280',
-    transition: 'all 0.15s',
-  })
+  const wasCall = !!call.vapi_call_id || !!call.transcript || call.channel === 'autonomous_call' || call.channel === 'hybrid_call'
+  const isActive = /active|eligible/i.test(elig?.member?.eligibilityStatus ?? '')
 
-  // Status banner — shown above the tabs for non-completed calls
-  const statusBanner = () => {
-    if (call.status === 'queued') {
-      return (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </div>
-          <div>
-            <p style={{ fontWeight: 600, color: '#15803D', marginBottom: '0.25rem' }}>Thank you — data submitted for testing</p>
-            <p style={{ color: '#166534', fontSize: '0.875rem' }}>Patient details have been saved successfully. No further action needed from you.</p>
-          </div>
-        </div>
-      )
+  const [tab, setTab] = useState<'result' | 'codes' | 'transcript'>('result')
+  const extraTabs = [
+    codes?.requestedCodes?.length ? 'codes' : null,
+    call.transcript ? 'transcript' : null,
+  ].filter(Boolean) as string[]
+
+  // ── HERO: the one thing the biller needs to know ─────────────────────────
+  function Hero() {
+    // Pending states (no result yet)
+    if (call.status === 'in_progress') return <Banner color="#2563EB" bg="#EFF6FF" border="#BFDBFE" title="Verification in progress" body="Working on it now — results will appear here automatically when it's done." />
+    if (call.status === 'scheduled') return <Banner color="#CA8A04" bg="#FEFCE8" border="#FDE68A" title="Scheduled" body="This will run automatically during insurance business hours. Results will appear here when complete." />
+    if (call.status === 'queued' && !elig) return <Banner color="#16A34A" bg="#F0FDF4" border="#BBF7D0" title="Saved" body="Patient details saved. No further action needed." />
+
+    // Resolved outcomes
+    if (outcome?.status === 'redirected') {
+      return <ActionBanner title="Verify elsewhere" reason={outcome.redirectReason} next={outcome.nextAction} phone={outcome.redirectPhone} />
     }
-    if (call.status === 'scheduled') {
-      return (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem', background: '#FEFCE8', border: '1px solid #FDE68A', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#FEF9C3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" fill="none" stroke="#CA8A04" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-          </div>
-          <div>
-            <p style={{ fontWeight: 600, color: '#92400E', marginBottom: '0.25rem' }}>Call scheduled</p>
-            <p style={{ color: '#78350F', fontSize: '0.875rem' }}>This call will be placed automatically during insurance business hours. Results will appear here once complete.</p>
-          </div>
-        </div>
-      )
+    if (outcome?.status === 'not_covered') {
+      return <Banner color="#DC2626" bg="#FEF2F2" border="#FECACA" title="Not covered — patient is self-pay" body={outcome.nextAction ?? 'No coverage found for this service.'} />
     }
-    if (call.status === 'in_progress') {
+    if (outcome?.status === 'needs_callback' || outcome?.status === 'incomplete') {
+      return <ActionBanner title="Needs follow-up" reason={outcome.redirectReason} next={outcome.nextAction} phone={outcome.redirectPhone} />
+    }
+    if (isActive || (b && Object.keys(b).some(k => has((b as Record<string, unknown>)[k])))) {
       return (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14v3z"/>
-            </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '0.875rem', padding: '1rem 1.25rem' }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="20" height="20" fill="none" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
           </div>
           <div>
-            <p style={{ fontWeight: 600, color: '#1D4ED8', marginBottom: '0.25rem' }}>Call in progress</p>
-            <p style={{ color: '#1E40AF', fontSize: '0.875rem' }}>The AI agent is on the call now. Results will appear here automatically when it ends.</p>
+            <div style={{ fontWeight: 700, color: '#15803D', fontSize: '1.0625rem' }}>Active coverage — verified</div>
+            <div style={{ color: '#166534', fontSize: '0.875rem' }}>{elig?.plan?.payerName ?? 'Coverage'}{elig?.plan?.planName ? ` · ${elig.plan.planName}` : ''}</div>
           </div>
         </div>
       )
@@ -105,223 +95,248 @@ export default function CallDetailTabs({ call }: { call: Call }) {
     return null
   }
 
-  // Verification type info bar
-  const verificationBar = () => {
-    const vt = call.verification_type
-    if (!vt || !(vt in VERIFICATION_TEMPLATES)) return null
-    const t = VERIFICATION_TEMPLATES[vt as VerificationType]
+  function Banner({ color, bg, border, title, body }: { color: string; bg: string; border: string; title: string; body: string }) {
     return (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
-        background: t.bgColor, border: `1px solid ${t.borderColor}`,
-        borderRadius: '0.75rem', padding: '0.875rem 1.25rem', marginBottom: '1.25rem',
-      }}>
-        <div>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verification Type</span>
-          <div style={{ fontWeight: 700, color: t.textColor, fontSize: '0.9375rem', marginTop: '0.125rem' }}>{t.label}</div>
-        </div>
-        <div>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>CPT / HCPCS</span>
-          <div style={{ fontFamily: 'monospace', fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{t.cptCodes}</div>
-        </div>
-        <div>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Diagnosis</span>
-          <div style={{ fontFamily: 'monospace', fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{t.diagnosisCode}</div>
-        </div>
-        {call.date_of_service && (
-          <div>
-            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date of Service</span>
-            <div style={{ fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{call.date_of_service}</div>
-          </div>
-        )}
-        {call.plan_type && (
-          <div>
-            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Plan Type</span>
-            <div style={{ fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{call.plan_type}</div>
-          </div>
-        )}
-        {call.state && (
-          <div>
-            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: t.textColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>State</span>
-            <div style={{ fontWeight: 600, color: t.textColor, fontSize: '0.8125rem', marginTop: '0.125rem' }}>{call.state}</div>
-          </div>
-        )}
+      <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: '0.875rem', padding: '1rem 1.25rem' }}>
+        <div style={{ fontWeight: 700, color, fontSize: '1rem' }}>{title}</div>
+        <div style={{ color, fontSize: '0.875rem', marginTop: '0.25rem', opacity: 0.85 }}>{body}</div>
       </div>
     )
   }
 
-  return (
-    <div>
-      {verificationBar()}
-      {statusBanner()}
-
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: '0.375rem', background: '#F3F4F6', padding: '0.375rem', borderRadius: '0.75rem', marginBottom: '1.5rem', width: 'fit-content' }}>
-        <button style={tabStyle('overview')} onClick={() => setTab('overview')}>Overview</button>
-        <button style={tabStyle('codes')} onClick={() => setTab('codes')}>Code-by-Code</button>
-        <button style={tabStyle('transcript')} onClick={() => setTab('transcript')}>Transcript</button>
+  function ActionBanner({ title, reason, next, phone }: { title: string; reason?: string | null; next?: string | null; phone?: string | null }) {
+    return (
+      <div style={{ display: 'flex', gap: '1rem', background: '#FAF5FF', border: '2px solid #C4B5FD', borderRadius: '0.875rem', padding: '1.125rem 1.25rem' }}>
+        <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>↪</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, color: '#6B21A8', fontSize: '1.0625rem', marginBottom: '0.25rem' }}>{title}</div>
+          {has(reason) && <p style={{ color: '#581C87', fontSize: '0.875rem', margin: 0 }}>{reason}</p>}
+          {has(next) && <p style={{ color: '#6B21A8', fontSize: '0.875rem', fontWeight: 600, margin: '0.375rem 0 0' }}>→ {next}</p>}
+          {has(phone) && (
+            <a href={`tel:${phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.625rem', background: '#7C3AED', color: 'white', fontWeight: 700, borderRadius: '0.5rem', padding: '0.375rem 0.875rem', textDecoration: 'none' }}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14v3z" /></svg>
+              {phone}
+            </a>
+          )}
+        </div>
       </div>
+    )
+  }
 
-      {/* Overview tab */}
-      {tab === 'overview' && (
-        <div>
-          {!elig ? (
-            <div className="card" style={{ color: '#9CA3AF', textAlign: 'center', padding: '2rem' }}>No eligibility data captured for this call.</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-              <div>
-                <Section title="Member">
-                  <Row label="Eligibility Status"><span style={{ color: elig.member?.eligibilityStatus === 'active' || elig.member?.eligibilityStatus === 'Eligible' ? '#16A34A' : '#DC2626', fontWeight: 600 }}>{elig.member?.eligibilityStatus ?? '—'}</span></Row>
-                  <Row label="Effective Date">{elig.member?.eligibilityEffectiveDate ?? '—'}</Row>
-                  <Row label="End Date">{elig.member?.eligibilityEndDate ?? '—'}</Row>
-                  <Row label="Coverage Level">{elig.member?.coverageLevel ?? '—'}</Row>
-                  <Row label="Group Number">{elig.member?.groupNumber ?? '—'}</Row>
-                </Section>
+  // ── Source / provenance line (channel-aware) ─────────────────────────────
+  function SourceLine() {
+    const when = fmtDate(call.ended_at) ?? fmtDate(call.updated_at)
+    if (wasCall) {
+      const dur = call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}m ${call.duration_seconds % 60}s` : null
+      const bits = [
+        call.channel === 'hybrid_call' ? 'Hybrid call (AI + biller)' : 'AI phone call',
+        when, dur,
+        elig?.callReference?.repName ? `Rep: ${elig.callReference.repName}` : null,
+        elig?.callReference?.callReferenceNumber ? `Ref #: ${elig.callReference.callReferenceNumber}` : null,
+        call.cost ? `$${Number(call.cost).toFixed(2)}` : null,
+      ].filter(Boolean)
+      return <SourcePill icon="📞" text={bits.join('  ·  ')} />
+    }
+    // electronic / refer-out
+    return <SourcePill icon="⚡" text={`Pulled electronically${when ? `  ·  ${when}` : ''}  ·  no phone call`} />
+  }
+  function SourcePill({ icon, text }: { icon: string; text: string }) {
+    return (
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '9999px', padding: '0.375rem 0.875rem', fontSize: '0.8125rem', color: '#6B7280' }}>
+        <span aria-hidden>{icon}</span><span>{text}</span>
+      </div>
+    )
+  }
 
-                <Section title="Plan">
-                  <Row label="Payer">{elig.plan?.payerName ?? '—'}</Row>
-                  <Row label="Plan Name">{elig.plan?.planName ?? '—'}</Row>
-                  <Row label="Plan Type">{elig.plan?.planType ?? '—'}</Row>
-                  <Row label="Network">{elig.plan?.networkName ?? '—'}</Row>
-                  <Row label="In-Network Verified"><YesNo val={elig.plan?.isInNetworkVerified} /></Row>
-                  <Row label="Benefit Period">{elig.benefits?.benefitPeriod ?? '—'}</Row>
-                  <Row label="Prior Auth Required"><YesNo val={elig.plan?.priorAuthRequired} /></Row>
-                  <Row label="Referral Required"><YesNo val={elig.plan?.referralRequired} /></Row>
-                </Section>
+  // ── Cost summary stat cards (what the patient owes) ───────────────────────
+  const ded = b?.deductible, oop = b?.outOfPocketMax, coins = b?.coinsurance, cop = b?.copays
+  const officeCopay = cop?.audiologyVisit ?? cop?.specialistVisit ?? cop?.hearingExam
+  const statCards: React.ReactNode[] = []
+  if (elig?.member?.eligibilityStatus) statCards.push(<StatCard key="cov" label="Coverage" value={elig.member.eligibilityStatus} color={isActive ? '#16A34A' : '#DC2626'} />)
+  if (has(ded?.individualRemaining) || has(ded?.individualTotal)) statCards.push(<StatCard key="ded" label="Deductible (in-network)" value={money(ded?.individualRemaining ?? ded?.individualTotal)!} sub={has(ded?.individualRemaining) && has(ded?.individualTotal) ? `left of ${money(ded?.individualTotal)}` : 'individual'} />)
+  if (has(oop?.individualRemaining) || has(oop?.individualTotal)) statCards.push(<StatCard key="oop" label="Out-of-pocket max" value={money(oop?.individualRemaining ?? oop?.individualTotal)!} sub={has(oop?.individualRemaining) && has(oop?.individualTotal) ? `left of ${money(oop?.individualTotal)}` : 'individual'} />)
+  if (has(officeCopay)) statCards.push(<StatCard key="copay" label="Visit copay" value={money(officeCopay)!} sub="office / audiology" />)
+  if (has(coins?.inNetworkPercent)) statCards.push(<StatCard key="coins" label="Coinsurance" value={pct(coins?.inNetworkPercent)!} sub={has(coins?.outOfNetworkPercent) ? `${coins?.outOfNetworkPercent}% out-of-network` : 'in-network'} />)
 
-                <Section title="Call Reference">
-                  <Row label="Rep Name">{elig.callReference?.repName ?? '—'}</Row>
-                  <Row label="Reference Number">{elig.callReference?.callReferenceNumber ?? '—'}</Row>
-                  <Row label="Department">{elig.callReference?.department ?? '—'}</Row>
-                  <Row label="Confidence"><ConfidenceBadge val={elig.confidence} /></Row>
-                </Section>
-              </div>
+  // ── verification context bar ─────────────────────────────────────────────
+  const vt = call.verification_type as VerificationType | null
+  const tpl = vt && vt in VERIFICATION_TEMPLATES ? VERIFICATION_TEMPLATES[vt] : null
+  const isHA = vt === 'hearing_aid'
+  const isProcedural = vt === 'abr' || vt === 'apd' || vt === 'vestibular'
+  const ha = b?.hearingAidBenefit
 
-              <div>
-                <Section title="Deductible">
-                  <Row label="Individual Total"><Dollar val={elig.benefits?.deductible?.individualTotal} /></Row>
-                  <Row label="Individual Remaining"><Dollar val={elig.benefits?.deductible?.individualRemaining} /></Row>
-                  <Row label="Family Total"><Dollar val={elig.benefits?.deductible?.familyTotal} /></Row>
-                  <Row label="Family Remaining"><Dollar val={elig.benefits?.deductible?.familyRemaining} /></Row>
-                  <Row label="Applies to Audiology"><YesNo val={elig.benefits?.deductible?.appliesToAudiology} /></Row>
-                </Section>
+  const tabBtn = (t: string, lbl: string) => (
+    <button onClick={() => setTab(t as 'result' | 'codes' | 'transcript')} style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.8125rem', background: tab === t ? '#0D1117' : 'transparent', color: tab === t ? 'white' : '#6B7280' }}>{lbl}</button>
+  )
 
-                <Section title="Out-of-Pocket Max">
-                  <Row label="Individual Total"><Dollar val={elig.benefits?.outOfPocketMax?.individualTotal} /></Row>
-                  <Row label="Individual Remaining"><Dollar val={elig.benefits?.outOfPocketMax?.individualRemaining} /></Row>
-                  <Row label="Family Total"><Dollar val={elig.benefits?.outOfPocketMax?.familyTotal} /></Row>
-                  <Row label="Family Remaining"><Dollar val={elig.benefits?.outOfPocketMax?.familyRemaining} /></Row>
-                </Section>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <Hero />
 
-                <Section title="Copays & Coinsurance">
-                  <Row label="In-Network Coinsurance">{elig.benefits?.coinsurance?.inNetworkPercent != null ? `${elig.benefits.coinsurance.inNetworkPercent}%` : '—'}</Row>
-                  <Row label="Out-of-Network Coinsurance">{elig.benefits?.coinsurance?.outOfNetworkPercent != null ? `${elig.benefits.coinsurance.outOfNetworkPercent}%` : '—'}</Row>
-                  <Row label="Hearing Exam Copay">{elig.benefits?.copays?.hearingExam != null ? `$${elig.benefits.copays.hearingExam}` : '—'}</Row>
-                  <Row label="Audiology Visit Copay">{elig.benefits?.copays?.audiologyVisit != null ? `$${elig.benefits.copays.audiologyVisit}` : '—'}</Row>
-                </Section>
+      {/* Source line */}
+      <div><SourceLine /></div>
 
-                <Section title="Hearing Aid Benefit">
-                  <Row label="Covered"><YesNo val={elig.benefits?.hearingAidBenefit?.covered} /></Row>
-                  <Row label="Allowance"><Dollar val={elig.benefits?.hearingAidBenefit?.allowanceAmount} /></Row>
-                  <Row label="Allowance Type">{elig.benefits?.hearingAidBenefit?.allowanceType ?? '—'}</Row>
-                  <Row label="Frequency">{elig.benefits?.hearingAidBenefit?.frequency ?? '—'}</Row>
-                  <Row label="Prior Auth Required"><YesNo val={elig.benefits?.hearingAidBenefit?.requiresPriorAuth} /></Row>
-                  <Row label="Vendor / 3rd Party Restriction">{elig.benefits?.hearingAidBenefit?.vendorRestriction ?? '—'}</Row>
-                  <Row label="Age Restrictions">{elig.benefits?.hearingAidBenefit?.ageRestrictions ?? '—'}</Row>
-                  <Row label="Deductible Applies"><YesNo val={elig.benefits?.hearingAidBenefit?.deductibleApplies} /></Row>
-                  {elig.benefits?.hearingAidBenefit?.coverageNotes && (
-                    <Row label="Notes">{elig.benefits.hearingAidBenefit.coverageNotes}</Row>
+      {/* What the patient owes */}
+      {statCards.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(statCards.length, 5)}, 1fr)`, gap: '0.75rem' }}>{statCards}</div>
+      )}
+
+      {/* Verification context */}
+      {tpl && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', background: tpl.bgColor, border: `1px solid ${tpl.borderColor}`, borderRadius: '0.75rem', padding: '0.75rem 1.125rem' }}>
+          <Ctx c={tpl.textColor} label="Type" value={tpl.label} />
+          <Ctx c={tpl.textColor} label="CPT / HCPCS" value={call.codes_requested || tpl.cptCodes} mono />
+          {has(call.date_of_service) && <Ctx c={tpl.textColor} label="Date of Service" value={call.date_of_service!} />}
+          {has(call.plan_type) && <Ctx c={tpl.textColor} label="Plan Type" value={call.plan_type!} />}
+          {has(call.state) && <Ctx c={tpl.textColor} label="State" value={call.state!} />}
+        </div>
+      )}
+
+      {/* Tab bar — only if there's a call transcript or code-level data */}
+      {extraTabs.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.25rem', background: '#F3F4F6', padding: '0.25rem', borderRadius: '0.625rem', width: 'fit-content' }}>
+          {tabBtn('result', 'Details')}
+          {codes?.requestedCodes?.length ? tabBtn('codes', 'Code-by-Code') : null}
+          {call.transcript ? tabBtn('transcript', 'Transcript') : null}
+        </div>
+      )}
+
+      {/* ── RESULT / DETAILS ── */}
+      {tab === 'result' && (
+        <>
+          {!elig && call.status === 'completed' && (
+            <Card><div style={{ color: '#9CA3AF', textAlign: 'center', padding: '1rem' }}>No benefit detail captured.</div></Card>
+          )}
+          {elig && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {/* Coverage + plan */}
+              <Card title="Coverage">
+                <Row label="Status" value={elig.member?.eligibilityStatus} strong />
+                <Row label="Effective" value={elig.member?.eligibilityEffectiveDate} />
+                <Row label="Ends" value={elig.member?.eligibilityEndDate} />
+                <Row label="Plan" value={elig.plan?.planName} />
+                <Row label="Plan type" value={elig.plan?.planType} />
+                <Row label="Payer" value={elig.plan?.payerName} />
+                <Row label="Group #" value={elig.member?.groupNumber} />
+                <Row label="In-network" value={yesno(elig.plan?.isInNetworkVerified)} />
+                <Row label="Prior auth required" value={yesno(elig.plan?.priorAuthRequired)} />
+                <Row label="Referral required" value={yesno(elig.plan?.referralRequired)} />
+                <Row label="Funding" value={elig.plan?.fundingType} />
+              </Card>
+
+              {/* Patient responsibility detail */}
+              <Card title="Patient responsibility">
+                <Row label="Deductible — individual" value={money(ded?.individualTotal)} />
+                <Row label="Deductible — remaining" value={money(ded?.individualRemaining)} strong />
+                <Row label="Deductible — family" value={money(ded?.familyTotal)} />
+                <Row label="Family remaining" value={money(ded?.familyRemaining)} />
+                <Row label="Out-of-pocket — individual" value={money(oop?.individualTotal)} />
+                <Row label="OOP remaining" value={money(oop?.individualRemaining)} strong />
+                <Row label="Out-of-pocket — family" value={money(oop?.familyTotal)} />
+                <Row label="Coinsurance (in-network)" value={pct(coins?.inNetworkPercent)} />
+                <Row label="Coinsurance (out-of-network)" value={pct(coins?.outOfNetworkPercent)} />
+                <Row label="Office / audiology copay" value={money(cop?.audiologyVisit)} />
+                <Row label="Hearing exam copay" value={money(cop?.hearingExam)} />
+              </Card>
+
+              {/* Hearing-aid section — only for HA verifications, only populated fields */}
+              {isHA && ha && (
+                <Card title="Hearing-aid benefit" accent="#15803D">
+                  <Row label="Covered (medical/DME)" value={yesno(ha.covered)} strong />
+                  <Row label="Allowance" value={money(ha.allowanceAmount)} />
+                  <Row label="Allowance type" value={ha.allowanceType} />
+                  <Row label="Frequency" value={ha.frequency} />
+                  <Row label="Still available" value={yesno(ha.benefitStillAvailable)} />
+                  <Row label="Last used" value={ha.benefitLastUsedDate} />
+                  <Row label="Prior auth required" value={yesno(ha.requiresPriorAuth)} />
+                  <Row label="Prior auth phone" value={ha.priorAuthPhone} />
+                  <Row label="3rd-party / vendor" value={ha.vendorRestriction} />
+                  <Row label="Deductible applies" value={yesno(ha.deductibleApplies)} />
+                  <Row label="Copay" value={money(ha.copayAmount)} />
+                  <Row label="Coinsurance" value={pct(ha.coinsurancePercent)} />
+                  <Row label="Notes" value={ha.coverageNotes} />
+                  {!has(ha.allowanceAmount) && !has(ha.frequency) && (
+                    <p style={{ color: '#9CA3AF', fontSize: '0.75rem', margin: '0.5rem 0 0', fontStyle: 'italic' }}>The hearing-aid allowance and frequency aren&apos;t available electronically — see the result above for how to obtain them.</p>
                   )}
-                </Section>
+                </Card>
+              )}
 
-                {/* ABR / APD specific */}
-                {(call.verification_type === 'abr' || call.verification_type === 'apd') && (
-                  <Section title="Medical Policy">
-                    <Row label="Corporate Medical Policies Apply">{elig.plan?.medicalNecessityRequired != null ? <YesNo val={elig.plan.medicalNecessityRequired} /> : <span style={{ color: '#9CA3AF' }}>—</span>}</Row>
-                  </Section>
-                )}
+              {/* Procedural (ABR/APD/Vestibular) */}
+              {isProcedural && (
+                <Card title="Procedure coverage" accent="#7C3AED">
+                  <Row label="Codes" value={call.codes_requested} />
+                  <Row label="Medical-necessity policy" value={yesno(elig.plan?.medicalNecessityRequired)} />
+                  <Row label="Prior auth required" value={yesno(elig.plan?.priorAuthRequired)} />
+                  <p style={{ color: '#9CA3AF', fontSize: '0.75rem', margin: '0.5rem 0 0', fontStyle: 'italic' }}>Whether the specific codes are valid/billable and need prior auth is confirmed on a call — the eligibility foundation above is captured electronically.</p>
+                </Card>
+              )}
 
-                {/* Audiology-specific exam details */}
-                {elig.benefits?.audiologyExam?.covered !== undefined && (
-                  <Section title="Audiology Exam">
-                    <Row label="Covered"><YesNo val={elig.benefits.audiologyExam.covered} /></Row>
-                    <Row label="Visit Limit">{elig.benefits.audiologyExam.visitLimit ?? '—'}</Row>
-                    <Row label="Frequency Limit">{elig.benefits.audiologyExam.frequencyLimit ?? '—'}</Row>
-                    <Row label="Coverage Details">{elig.benefits.audiologyExam.coverageDetails ?? '—'}</Row>
-                  </Section>
-                )}
-              </div>
+              {/* Audiology exam, if returned */}
+              {b?.audiologyExam && has(b.audiologyExam.covered) && (
+                <Card title="Audiology exam">
+                  <Row label="Covered" value={yesno(b.audiologyExam.covered)} strong />
+                  <Row label="Visit limit" value={b.audiologyExam.visitLimit} />
+                  <Row label="Frequency limit" value={b.audiologyExam.frequencyLimit} />
+                  <Row label="Details" value={b.audiologyExam.coverageDetails} />
+                </Card>
+              )}
 
-              {elig.notes && (
+              {has(elig.notes) && (
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <Section title="Notes">
-                    <div style={{ padding: '0.875rem 0', color: '#374151', fontSize: '0.875rem', lineHeight: 1.6 }}>{elig.notes}</div>
-                  </Section>
+                  <Card title="Notes"><p style={{ color: '#374151', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>{elig.notes}</p></Card>
                 </div>
               )}
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {/* Code-by-Code tab */}
-      {tab === 'codes' && (
-        <div>
-          {!codes || !codes.requestedCodes?.length ? (
-            <div className="card" style={{ color: '#9CA3AF', textAlign: 'center', padding: '2rem' }}>No code-by-code data captured for this call.</div>
-          ) : (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                    {['Code', 'Covered', 'Prior Auth', 'Referral', 'Deductible', 'Coinsurance', 'Copay', 'Freq. Limit', 'Notes'].map(h => (
-                      <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {codes.requestedCodes.map((c, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                      <td style={{ padding: '0.875rem 1rem' }}><span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0D1117', fontSize: '0.9375rem' }}>{c.code}</span></td>
-                      <td style={{ padding: '0.875rem 1rem' }}><YesNo val={c.covered} /></td>
-                      <td style={{ padding: '0.875rem 1rem' }}><YesNo val={c.priorAuthRequired} /></td>
-                      <td style={{ padding: '0.875rem 1rem' }}><YesNo val={c.referralRequired} /></td>
-                      <td style={{ padding: '0.875rem 1rem' }}><YesNo val={c.deductibleApplies} /></td>
-                      <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem' }}>{c.coinsurance ?? '—'}</td>
-                      <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem' }}>{c.copay ?? '—'}</td>
-                      <td style={{ padding: '0.875rem 1rem', color: '#374151', fontSize: '0.875rem' }}>{c.frequencyLimits ?? '—'}</td>
-                      <td style={{ padding: '0.875rem 1rem', color: '#6B7280', fontSize: '0.8125rem', maxWidth: 200 }}>{c.notes ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {/* ── CODE-BY-CODE ── */}
+      {tab === 'codes' && codes?.requestedCodes?.length ? (
+        <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: '0.75rem', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+              {['Code', 'Covered', 'Prior Auth', 'Referral', 'Deductible', 'Coinsurance', 'Copay', 'Freq.', 'Notes'].map(h => <th key={h} style={{ padding: '0.625rem 0.875rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {codes.requestedCodes.map((c, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <td style={{ padding: '0.75rem 0.875rem', fontFamily: 'monospace', fontWeight: 700 }}>{c.code}</td>
+                  <td style={{ padding: '0.75rem 0.875rem' }}>{yesno(c.covered) ?? '—'}</td>
+                  <td style={{ padding: '0.75rem 0.875rem' }}>{yesno(c.priorAuthRequired) ?? '—'}</td>
+                  <td style={{ padding: '0.75rem 0.875rem' }}>{yesno(c.referralRequired) ?? '—'}</td>
+                  <td style={{ padding: '0.75rem 0.875rem' }}>{yesno(c.deductibleApplies) ?? '—'}</td>
+                  <td style={{ padding: '0.75rem 0.875rem', fontSize: '0.8125rem' }}>{c.coinsurance ?? '—'}</td>
+                  <td style={{ padding: '0.75rem 0.875rem', fontSize: '0.8125rem' }}>{c.copay ?? '—'}</td>
+                  <td style={{ padding: '0.75rem 0.875rem', fontSize: '0.8125rem' }}>{c.frequencyLimits ?? '—'}</td>
+                  <td style={{ padding: '0.75rem 0.875rem', fontSize: '0.8125rem', color: '#6B7280', maxWidth: 200 }}>{c.notes ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      ) : null}
 
-      {/* Transcript tab */}
-      {tab === 'transcript' && (
-        <div className="card">
-          {!call.transcript ? (
-            <p style={{ color: '#9CA3AF', textAlign: 'center', padding: '2rem 0' }}>No transcript available.</p>
-          ) : (
-            <div style={{ fontFamily: 'monospace', fontSize: '0.8125rem', lineHeight: 1.7, color: '#374151', whiteSpace: 'pre-wrap', maxHeight: 600, overflowY: 'auto' }}>
-              {call.transcript.split('\n').map((line, i) => {
-                const isAI = line.startsWith('AI:')
-                const isUser = line.startsWith('User:')
-                return (
-                  <div key={i} style={{ marginBottom: '0.5rem' }}>
-                    {isAI && <span style={{ color: '#00C853', fontWeight: 600 }}>AI: </span>}
-                    {isUser && <span style={{ color: '#2563EB', fontWeight: 600 }}>IVR/Rep: </span>}
-                    <span>{isAI ? line.slice(3) : isUser ? line.slice(5) : line}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+      {/* ── TRANSCRIPT (calls only) ── */}
+      {tab === 'transcript' && call.transcript && (
+        <Card>
+          <div style={{ fontFamily: 'monospace', fontSize: '0.8125rem', lineHeight: 1.7, color: '#374151', whiteSpace: 'pre-wrap', maxHeight: 600, overflowY: 'auto' }}>
+            {call.transcript.split('\n').map((line, i) => {
+              const isAI = line.startsWith('AI:'); const isUser = line.startsWith('User:')
+              return <div key={i} style={{ marginBottom: '0.5rem' }}>{isAI && <span style={{ color: '#15803D', fontWeight: 600 }}>Ben: </span>}{isUser && <span style={{ color: '#2563EB', fontWeight: 600 }}>IVR/Rep: </span>}<span>{isAI ? line.slice(3) : isUser ? line.slice(5) : line}</span></div>
+            })}
+          </div>
+        </Card>
       )}
+    </div>
+  )
+}
+
+function Ctx({ label, value, c, mono }: { label: string; value: string; c: string; mono?: boolean }) {
+  return (
+    <div>
+      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: c, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+      <div style={{ fontWeight: 600, color: c, fontSize: '0.8125rem', marginTop: '0.125rem', fontFamily: mono ? 'monospace' : undefined }}>{value}</div>
     </div>
   )
 }

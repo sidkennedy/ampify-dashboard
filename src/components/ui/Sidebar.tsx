@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types'
+import { clinicHasFeature } from '@/lib/features'
 
 interface SidebarProps {
-  profile: (Profile & { clinics: { name: string } | null }) | null
+  profile: (Profile & { clinics: { name: string; features?: Record<string, boolean> | null } | null }) | null
 }
 
 const NAV = [
@@ -21,7 +22,7 @@ const NAV = [
   },
   {
     href: '/calls/new',
-    label: 'New Call',
+    label: 'New Verification',
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14v2.92z"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/>
@@ -30,7 +31,7 @@ const NAV = [
   },
   {
     href: '/calls',
-    label: 'Call History',
+    label: 'Verifications',
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
@@ -110,25 +111,64 @@ export default function Sidebar({ profile }: SidebarProps) {
           </Link>
         ))}
 
-        {profile?.role === 'superadmin' && (
+        {/* Expansion features (per-clinic) */}
+        {(clinicHasFeature(profile?.clinics, 'claim_status') || clinicHasFeature(profile?.clinics, 'claims')) && (
           <Link
-            href="/admin"
+            href="/claims"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.625rem',
-              padding: '0.625rem 0.75rem', borderRadius: '0.5rem', marginTop: '0.5rem',
-              color: isActive('/admin') ? 'white' : '#9CA3AF',
-              background: isActive('/admin') ? '#161B22' : 'transparent',
+              padding: '0.625rem 0.75rem', borderRadius: '0.5rem', marginBottom: '0.25rem',
+              color: isActive('/claims') ? 'white' : '#9CA3AF',
+              background: isActive('/claims') ? '#161B22' : 'transparent',
               textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500,
-              borderTop: '1px solid #21262D', paddingTop: '0.875rem',
             }}
           >
-            <span style={{ color: isActive('/admin') ? '#00C853' : '#6B7280' }}>
+            <span style={{ color: isActive('/claims') ? '#00C853' : '#6B7280' }}>
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/>
               </svg>
             </span>
-            Admin Panel
+            Claims
           </Link>
+        )}
+
+        {profile?.role === 'superadmin' && (
+          <div style={{ borderTop: '1px solid #21262D', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
+            <Link
+              href="/admin"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.625rem',
+                padding: '0.625rem 0.75rem', borderRadius: '0.5rem',
+                color: isActive('/admin') ? 'white' : '#9CA3AF',
+                background: isActive('/admin') ? '#161B22' : 'transparent',
+                textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500,
+              }}
+            >
+              <span style={{ color: isActive('/admin') ? '#00C853' : '#6B7280' }}>
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+              </span>
+              Admin Panel
+            </Link>
+            <Link
+              href="/costs"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.625rem',
+                padding: '0.625rem 0.75rem', borderRadius: '0.5rem', marginTop: '0.125rem',
+                color: isActive('/costs') ? 'white' : '#9CA3AF',
+                background: isActive('/costs') ? '#161B22' : 'transparent',
+                textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500,
+              }}
+            >
+              <span style={{ color: isActive('/costs') ? '#00C853' : '#6B7280' }}>
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                </svg>
+              </span>
+              Cost Tracker
+            </Link>
+          </div>
         )}
       </nav>
 

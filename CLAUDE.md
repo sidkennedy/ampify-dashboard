@@ -1,5 +1,16 @@
 # Ampify Dashboard — Project Bible
 
+> ## 🟢 START HERE (current state — read these first)
+> The project has evolved well beyond the original phone-only app described below. **Read these docs in order before doing anything:**
+> 1. **`PROJECT-STATUS.md`** — master snapshot: what's proven, what's left to build, scenario handling, and the full **operational reference** (assistant IDs, how to fire calls, callback test number `747-389-8407`, codes, vendor numbers, keys).
+> 2. **`PRODUCT-ARCHITECTURE.md`** — the multi-channel design (electronic + AI calls + hybrid), routing logic, vendor map.
+> 3. **`VAPI-CALL-TEST-LOG.md`** — every test call, all issues + fixes (R1–R17), per-payer viability.
+> 4. **`vapi-system-prompt.md`** — the live Vapi system prompt (the actual agent brain).
+>
+> **Key context NOT in the old text below:** the product is now **two channels** — electronic eligibility (Stedi, instant, no call) for diagnostics + the foundation, and **AI phone calls** for hearing-aid detail (to the payer OR the carve-out vendor like TruHearing / Nation's Hearing). Some payers (Excellus, UHC) refuse bots → handled electronically. There are now **two Vapi assistants** (payer + vendor). Client = **Nicole (owner) + Tammy (biller)** at Preferred Audiology Care / Syracuse Hearing Solutions (the "Fine Tone Hearing" name below is STALE).
+
+---
+
 This is a **Next.js + Supabase** web app built for audiology clinics. Staff enter patient insurance details, the system calls the insurance company via an AI agent (Vapi), and the results (eligibility, deductibles, coverage, CPT code breakdown) are displayed back to staff automatically.
 
 The client is **Nicole at Fine Tone Hearing** (audiology clinic). This tool is specifically for insurance verification — before a patient appointment, staff check what their insurance actually covers so there are no billing surprises.

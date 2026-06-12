@@ -16,8 +16,8 @@ export default async function NewCallPage() {
   return (
     <div>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0D1117', marginBottom: '0.25rem' }}>New Eligibility Call</h1>
-        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>Select a verification type, enter patient and insurance details, then run the call.</p>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0D1117', marginBottom: '0.25rem' }}>New Verification</h1>
+        <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>Pick the verification type, patient, and payer — the system chooses the fastest way to get the answer.</p>
       </div>
       <NewCallForm
         clinicId={profile?.clinic_id ?? ''}

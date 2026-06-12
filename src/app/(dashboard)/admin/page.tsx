@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import AdminActions from './AdminActions'
+import ClinicFeatureManager from './ClinicFeatureManager'
 import Link from 'next/link'
 
 interface ClinicStats {
@@ -157,6 +158,15 @@ export default async function AdminPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Feature access — expansion mode per clinic */}
+      <div style={{ marginTop: '2.5rem' }}>
+        <div style={{ marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#0D1117' }}>Feature access — expansion mode</h2>
+          <p style={{ color: '#6B7280', fontSize: '0.875rem', marginTop: '0.25rem' }}>The base product (eligibility + discovery) ships to every clinic. Flip on revenue-cycle features one clinic at a time. Some require a one-time Stedi enrollment of the clinic&apos;s NPI before they work.</p>
+        </div>
+        <ClinicFeatureManager clinics={(clinics ?? []).map(c => ({ id: c.id, name: c.name, features: c.features ?? {} }))} />
       </div>
     </div>
   )

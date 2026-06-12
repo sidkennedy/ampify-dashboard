@@ -9,6 +9,9 @@ export interface Clinic {
   npi: string | null
   tax_id: string | null
   callback_number: string | null
+  vendor_contracts: string[] | null
+  biller_phone: string | null
+  features: Record<string, boolean> | null
   status: 'active' | 'inactive'
   created_at: string
 }
@@ -50,7 +53,10 @@ export interface Call {
   plan_type: string | null
   state: string | null
   diagnosis_code: string | null
+  subscriber_name: string | null
+  subscriber_dob: string | null
   status: CallStatus
+  channel: string | null // electronic | autonomous_call | hybrid_call | carve_out_refer | needs_setup
   scheduled_for: string | null
   structured_output_eligibility: EligibilityOutput | null
   structured_output_codes: CodesOutput | null
@@ -58,11 +64,52 @@ export interface Call {
   recording_url: string | null
   duration_seconds: number | null
   ended_reason: string | null
-  cost: number | null
+  cost: number | null // real Vapi phone-call cost (from webhook)
+  electronic_checks: number | null // billable Stedi transactions
+  electronic_cost: number | null // estimated Stedi cost for this verification
   created_at: string
   updated_at: string
   started_at: string | null
   ended_at: string | null
+}
+
+export type ClaimStatus = 'unchecked' | 'paid' | 'denied' | 'pending' | 'acknowledged' | 'not_found' | 'error'
+
+export interface Claim {
+  id: string
+  clinic_id: string
+  patient_name: string
+  patient_dob: string | null
+  gender: string | null
+  member_id: string
+  payer_stedi_id: string
+  payer_name: string | null
+  service_date_from: string
+  service_date_to: string | null
+  charge_amount: number | null
+  status: ClaimStatus
+  status_detail: string | null
+  paid_amount: number | null
+  payer_claim_number: string | null
+  last_checked_at: string | null
+  // Submission (837P)
+  diagnosis_codes: string[] | null
+  service_lines: ServiceLineItem[] | null
+  place_of_service: string | null
+  submission_status: 'draft' | 'submitted' | 'accepted' | 'rejected' | 'error' | null
+  claim_control_number: string | null
+  submitted_at: string | null
+  submission_detail: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ServiceLineItem {
+  procedureCode: string
+  modifiers?: string[]
+  chargeAmount: number
+  units: number
+  serviceDate: string
 }
 
 export interface EligibilityOutput {
@@ -133,6 +180,10 @@ export interface EligibilityOutput {
       ageRestrictions?: string | null
       coverageNotes?: string | null
       codesMentioned?: string[] | null
+      benefitStructure?: string | null
+      benefitStillAvailable?: boolean | null
+      benefitLastUsedDate?: string | null
+      priorAuthPhone?: string | null
     }
     earMoldsAccessories?: {
       covered?: boolean | null
@@ -158,6 +209,12 @@ export interface EligibilityOutput {
   }
   confidence?: 'high' | 'medium' | 'low' | null
   notes?: string | null
+  outcome?: {
+    status?: 'benefits_captured' | 'redirected' | 'not_covered' | 'needs_callback' | 'incomplete' | null
+    nextAction?: string | null
+    redirectPhone?: string | null
+    redirectReason?: string | null
+  } | null
 }
 
 export interface CodesOutput {

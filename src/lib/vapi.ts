@@ -1,7 +1,33 @@
 const VAPI_BASE = 'https://api.vapi.ai'
 const VAPI_API_KEY = process.env.VAPI_API_KEY!
-const ASSISTANT_ID = process.env.VAPI_ASSISTANT_ID!
+const ASSISTANT_ID = process.env.VAPI_ASSISTANT_ID! // payer (default, proven autonomous)
+const VENDOR_ASSISTANT_ID = process.env.VAPI_VENDOR_ASSISTANT_ID
+const HYBRID_ASSISTANT_ID = process.env.VAPI_HYBRID_ASSISTANT_ID
 const PHONE_NUMBER_ID = process.env.VAPI_PHONE_NUMBER_ID!
+
+export type CallTarget = 'payer' | 'vendor' | 'hybrid'
+
+// Pick the assistant for this call type. Falls back to the payer assistant if a
+// specialized one isn't configured.
+function assistantIdFor(target?: CallTarget): string {
+  if (target === 'hybrid' && HYBRID_ASSISTANT_ID) return HYBRID_ASSISTANT_ID
+  if (target === 'vendor' && VENDOR_ASSISTANT_ID) return VENDOR_ASSISTANT_ID
+  return ASSISTANT_ID
+}
+
+export function toE164(raw: string): string {
+  const stripped = raw.trim()
+  if (stripped.startsWith('+')) {
+    const digits = stripped.slice(1).replace(/\D/g, '')
+    if (digits.length < 10) throw new Error(`Phone number too short after stripping: "${raw}"`)
+    return `+${digits}`
+  }
+  const digits = stripped.replace(/\D/g, '')
+  if (digits.length < 10) throw new Error(`Phone number too short after stripping: "${raw}"`)
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  throw new Error(`Cannot convert "${raw}" to E.164 — unexpected digit count (${digits.length})`)
+}
 
 export interface StartCallParams {
   patientName: string
@@ -21,6 +47,14 @@ export interface StartCallParams {
   diagnosisCode: string
   // Per-clinic callback number (caller name is hardcoded to "Ben Letterman" in the assistant)
   callbackNumber: string
+  subscriberName: string
+  subscriberDob: string
+  // Hybrid transfer: 'autonomous' (AI completes) or 'hybrid' (AI navigates to a live
+  // rep then transfers to the biller). billerPhone is the E.164 transfer destination.
+  callMode?: string
+  billerPhone?: string
+  // Which assistant to use: payer (default), vendor (HA TPA calls), or hybrid (transfer).
+  target?: CallTarget
 }
 
 export async function startVapiCall(params: StartCallParams): Promise<{ callId: string }> {
@@ -31,9 +65,9 @@ export async function startVapiCall(params: StartCallParams): Promise<{ callId: 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      assistantId: ASSISTANT_ID,
+      assistantId: assistantIdFor(params.target),
       phoneNumberId: PHONE_NUMBER_ID,
-      customer: { number: params.insurancePhone },
+      customer: { number: toE164(params.insurancePhone) },
       assistantOverrides: {
         variableValues: {
           patientName: params.patientName,
@@ -50,6 +84,10 @@ export async function startVapiCall(params: StartCallParams): Promise<{ callId: 
           state: params.state,
           diagnosisCode: params.diagnosisCode,
           callbackNumber: params.callbackNumber,
+          subscriberName: params.subscriberName,
+          subscriberDob: params.subscriberDob,
+          callMode: params.callMode ?? 'autonomous',
+          billerPhone: params.billerPhone ?? '',
         },
       },
     }),
