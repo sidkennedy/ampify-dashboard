@@ -46,11 +46,11 @@ function playChime() {
   } catch {}
 }
 
-const STAGE_UI: Record<Stage, { bg: string; border: string; color: string; icon: string; pulse: boolean }> = {
-  dialing:     { bg: '#EFF6FF', border: '#BFDBFE', color: '#1D4ED8', icon: '☎️', pulse: false },
-  working:     { bg: '#FFFBEB', border: '#FDE68A', color: '#B45309', icon: '⏳', pulse: true },
-  transferred: { bg: '#F0FDF4', border: '#86EFAC', color: '#15803D', icon: '📞', pulse: true },
-  failed:      { bg: '#FEF2F2', border: '#FECACA', color: '#B91C1C', icon: '⚠️', pulse: false },
+const STAGE_UI: Record<Stage, { accent: string; bg: string; icon: string; label: string; pulse: boolean }> = {
+  dialing:     { accent: '#1D4ED8', bg: '#EFF6FF', icon: '☎️', label: 'AI CALL STARTING', pulse: false },
+  working:     { accent: '#B45309', bg: '#FFFBEB', icon: '🤖', label: 'AI CALL IN PROGRESS', pulse: true },
+  transferred: { accent: '#15803D', bg: '#F0FDF4', icon: '📞', label: 'CONNECTING YOU NOW', pulse: true },
+  failed:      { accent: '#B91C1C', bg: '#FEF2F2', icon: '⚠️', label: "CALL DIDN'T CONNECT", pulse: false },
 }
 
 export default function HybridCallBanner() {
@@ -88,17 +88,17 @@ export default function HybridCallBanner() {
   if (terminal && dismissed.has(`${call.id}:${call.stage}`)) return null
 
   const ui = STAGE_UI[call.stage]
-  const headline: Record<Stage, string> = {
-    dialing: `Placing a call to ${call.payerName}…`,
-    working: `Reaching a rep at ${call.payerName} — stay by your phone`,
-    transferred: `Answer your phone now — connecting you to ${call.payerName}`,
-    failed: `The call to ${call.payerName} didn't reach a rep`,
+  const message: Record<Stage, string> = {
+    dialing: `Placing the call to ${call.payerName}…`,
+    working: `Reaching a live rep at ${call.payerName}`,
+    transferred: 'Answer your phone now',
+    failed: `Couldn't reach a rep at ${call.payerName}`,
   }
   const sub: Record<Stage, string> = {
-    dialing: `Hybrid verification for ${call.patientName}. Your phone will ring once we have a live rep — get ready.`,
-    working: `The assistant is navigating their phone system for ${call.patientName}. It'll ring you the moment a human picks up.`,
-    transferred: `You're being bridged to ${call.payerName} about ${call.patientName}. Open their page for everything we already know.`,
-    failed: `Reason: ${call.endedReason ?? 'unknown'}. You can send the call again.`,
+    dialing: "We'll connect you the moment a rep picks up — stay nearby.",
+    working: "We'll connect you shortly — your phone will ring when a human answers.",
+    transferred: `You're being connected to ${call.payerName}.`,
+    failed: `Reason: ${call.endedReason ?? 'unknown'}.`,
   }
 
   function dismiss() {
@@ -122,56 +122,66 @@ export default function HybridCallBanner() {
   return (
     <div
       style={{
-        display: 'flex', alignItems: 'center', gap: '1rem',
-        background: ui.bg, border: `1px solid ${ui.border}`, borderRadius: '0.75rem',
-        padding: '0.875rem 1.25rem', marginBottom: '1.5rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        position: 'fixed', top: '1rem', right: '1.25rem', zIndex: 60, width: 340, maxWidth: 'calc(100vw - 2rem)',
+        background: '#FFFFFF', borderRadius: '0.875rem',
+        border: `1px solid ${ui.accent}33`, borderTop: `3px solid ${ui.accent}`,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.14)', overflow: 'hidden',
+        animation: 'ampifySlideIn 0.25s ease-out',
       }}
+      role="status"
+      aria-live="polite"
     >
-      <span
-        aria-hidden
-        style={{ fontSize: '1.5rem', lineHeight: 1, animation: ui.pulse ? 'ampifyPulse 1.2s ease-in-out infinite' : 'none' }}
-      >{ui.icon}</span>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: ui.color, margin: 0 }}>{headline[call.stage]}</p>
-        <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: '0.125rem 0 0' }}>{sub[call.stage]}</p>
+      {/* Header strip: live label */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 0.875rem', background: ui.bg }}>
+        <span aria-hidden style={{ fontSize: '1.125rem', animation: ui.pulse ? 'ampifyPulse 1.2s ease-in-out infinite' : 'none' }}>{ui.icon}</span>
+        <span style={{ fontSize: '0.6875rem', fontWeight: 800, letterSpacing: '0.06em', color: ui.accent }}>{ui.label}</span>
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: ui.accent, animation: 'ampifyBlink 1.1s ease-in-out infinite' }} />
+        </span>
+        {terminal && (
+          <button onClick={dismiss} aria-label="Dismiss" style={{ background: 'transparent', border: 'none', color: '#9CA3AF', fontSize: '1.1rem', cursor: 'pointer', lineHeight: 1, padding: 0, marginLeft: '0.25rem' }}>×</button>
+        )}
       </div>
 
-      {/* Patient chip — the identity the whisper can't speak */}
-      <Link
-        href={`/calls/${call.id}`}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'flex-end', textDecoration: 'none',
-          padding: '0.375rem 0.75rem', borderRadius: '0.5rem', background: '#FFFFFF',
-          border: '1px solid #E5E7EB', whiteSpace: 'nowrap',
-        }}
-      >
-        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0D1117' }}>{call.patientName}</span>
-        <span style={{ fontSize: '0.6875rem', color: '#6B7280' }}>DOB {call.dob} · open page →</span>
-      </Link>
+      {/* Body */}
+      <div style={{ padding: '0.75rem 0.875rem 0.875rem' }}>
+        <p style={{ fontSize: '0.95rem', fontWeight: 700, color: ui.accent, margin: '0 0 0.125rem' }}>{message[call.stage]}</p>
+        <p style={{ fontSize: '0.8125rem', color: '#4B5563', margin: '0 0 0.625rem' }}>{sub[call.stage]}</p>
 
-      {call.stage === 'failed' && (
-        <button
-          onClick={retry}
-          disabled={retrying}
+        {/* Patient identity — what the whisper can't speak */}
+        <Link
+          href={`/calls/${call.id}`}
           style={{
-            padding: '0.5rem 0.875rem', borderRadius: '0.5rem', border: 'none',
-            background: '#B91C1C', color: '#fff', fontWeight: 600, fontSize: '0.8125rem',
-            cursor: retrying ? 'not-allowed' : 'pointer', opacity: retrying ? 0.6 : 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem',
+            textDecoration: 'none', padding: '0.5rem 0.625rem', borderRadius: '0.5rem',
+            background: '#F9FAFB', border: '1px solid #E5E7EB',
           }}
-        >{retrying ? 'Sending…' : 'Retry call'}</button>
-      )}
+        >
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#0D1117', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{call.patientName}</span>
+            <span style={{ fontSize: '0.6875rem', color: '#6B7280' }}>DOB {call.dob}</span>
+          </span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ui.accent, whiteSpace: 'nowrap' }}>Open file →</span>
+        </Link>
 
-      {terminal && (
-        <button
-          onClick={dismiss}
-          aria-label="Dismiss"
-          style={{ background: 'transparent', border: 'none', color: '#9CA3AF', fontSize: '1.25rem', cursor: 'pointer', lineHeight: 1, padding: '0 0.25rem' }}
-        >×</button>
-      )}
+        {call.stage === 'failed' && (
+          <button
+            onClick={retry}
+            disabled={retrying}
+            style={{
+              marginTop: '0.625rem', width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: 'none',
+              background: '#B91C1C', color: '#fff', fontWeight: 600, fontSize: '0.8125rem',
+              cursor: retrying ? 'not-allowed' : 'pointer', opacity: retrying ? 0.6 : 1,
+            }}
+          >{retrying ? 'Sending…' : 'Retry call'}</button>
+        )}
+      </div>
 
-      <style>{`@keyframes ampifyPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.18); opacity: 0.7; } }`}</style>
+      <style>{`
+        @keyframes ampifyPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.18); opacity: 0.7; } }
+        @keyframes ampifyBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+        @keyframes ampifySlideIn { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      `}</style>
     </div>
   )
 }
