@@ -11,6 +11,12 @@
 
 ---
 
+## 🗒️ Active TODOs / tech debt (added 2026-06-16)
+- **Delete `src/components/calls/GapCapture.tsx`** — dead code. Replaced by `CaseChecklist.tsx` (the dynamic generated checklist). Nothing imports it anymore. Sid is keeping it ~a few days to compare old vs. new capture UI, then wants it deleted once he confirms the new flow works. **Remind him to delete it.**
+- Case collaboration shipped 2026-06-16 (checklist generator + Realtime chat; migration `20260616_add_case_collab.sql` applied). Open follow-ups: notify VA on new clinic→VA message (Slack incoming webhook preferred, email as a fallback start), and the Vapi queue hookup.
+
+---
+
 This is a **Next.js + Supabase** web app built for audiology clinics. Staff enter patient insurance details, the system calls the insurance company via an AI agent (Vapi), and the results (eligibility, deductibles, coverage, CPT code breakdown) are displayed back to staff automatically.
 
 The client is **Nicole at Fine Tone Hearing** (audiology clinic). This tool is specifically for insurance verification — before a patient appointment, staff check what their insurance actually covers so there are no billing surprises.

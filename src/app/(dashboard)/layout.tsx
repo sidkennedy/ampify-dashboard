@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/ui/Sidebar'
 import HybridCallBanner from '@/components/calls/HybridCallBanner'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -27,6 +28,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar profile={profile} />
       <main style={{ flex: 1, marginLeft: 240, padding: '2rem', maxWidth: 'calc(100vw - 240px)' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <NotificationBell viewer={{ id: user.id, role: (profile?.role as 'staff' | 'admin' | 'superadmin') ?? 'staff' }} />
+        </div>
         <HybridCallBanner />
         {children}
       </main>
