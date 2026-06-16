@@ -5,7 +5,8 @@ import StatusBadge from '@/components/calls/StatusBadge'
 import ChannelBadge from '@/components/calls/ChannelBadge'
 import CallDetailTabs from './CallDetailTabs'
 import FireCallButton from './FireCallButton'
-import GapCapture from '@/components/calls/GapCapture'
+import CaseChecklist from '@/components/calls/CaseChecklist'
+import CaseChat from '@/components/cases/CaseChat'
 import CallInsuranceButton from '@/components/calls/CallInsuranceButton'
 import Link from 'next/link'
 import { clinicHasFeature } from '@/lib/features'
@@ -44,13 +45,17 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   let isSuperAdmin = false
   let canCreateClaim = false
+  let viewerRole: 'staff' | 'admin' | 'superadmin' = 'staff'
+  let viewerName: string | null = null
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, clinics(features)')
+      .select('role, full_name, clinics(features)')
       .eq('id', user.id)
       .single()
     isSuperAdmin = profile?.role === 'superadmin'
+    viewerRole = (profile?.role as 'staff' | 'admin' | 'superadmin') ?? 'staff'
+    viewerName = profile?.full_name ?? null
     const clinic = profile?.clinics as unknown as { features?: Record<string, boolean> | null } | null
     canCreateClaim = clinicHasFeature(clinic, 'claims') || clinicHasFeature(clinic, 'claim_status')
   }
@@ -143,9 +148,16 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
       {/* Channel-aware, biller-first result view (hero + cost summary + details) */}
       <CallDetailTabs call={call} />
 
-      {/* Human-call channels: the biller logs what the rep told them, over the electronic foundation. */}
+      {/* Human-call channels: generated script + structured capture, over the electronic foundation. */}
       {(call.channel === 'hybrid_call' || call.channel === 'needs_setup') && (
-        <GapCapture call={call} />
+        <CaseChecklist call={call} />
+      )}
+
+      {/* Per-case chat between the clinic biller and the Ampify VA. */}
+      {user && (call.channel === 'hybrid_call' || call.channel === 'needs_setup') && (
+        <div style={{ marginTop: '1.5rem' }}>
+          <CaseChat callId={call.id} clinicId={call.clinic_id} viewer={{ id: user.id, role: viewerRole, fullName: viewerName }} />
+        </div>
       )}
     </div>
   )
